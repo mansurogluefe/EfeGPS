@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EfeGPS - Gelişmiş Rota Analizi</title>
+    <title>EfeGPS - Rota Analizi</title>
 
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -36,11 +36,10 @@
 
 <div id="sidebar" class="open">
     <div id="sidebar-content">
-        <h3>Gelişmiş Analiz Paneli</h3>
+        <h3>Analiz Paneli</h3>
         <div class="tab-buttons">
             <div class="tab-button active" onclick="openTab('summary')">Özet</div>
             <div class="tab-button" onclick="openTab('stops')">Duraklamalar</div>
-            <div class="tab-button" onclick="openTab('analysis')">Detaylı Analiz</div>
             <div class="tab-button" onclick="openTab('settings')">Ayarlar</div>
         </div>
 
@@ -50,45 +49,18 @@
             <p><strong>Maksimum Hız:</strong> <span id="max-speed">-</span></p>
             <p><strong>Ortalama Hız:</strong> <span id="avg-speed">-</span></p>
             <p><strong>Toplam Süre:</strong> <span id="total-time">-</span></p>
-            <p><strong>Sürüş Süresi:</strong> <span id="drive-time">-</span></p>
-            <p><strong>Sürüş Puanı:</strong> <span id="driving-score">-</span></p>
+            <p><strong>Toplam Sürüş Süresi:</strong> <span id="drive-time">-</span></p>
         </div>
 
         <div id="stops" class="tab-content">
             <h4>Duraklama Noktaları (<span id="stop-count">0</span>)</h4>
-            <div id="stops-summary">
-                <p><strong>Toplam Duraklama:</strong> <span id="total-stop-time">-</span></p>
-                <p><strong>Ortalama Duraklama:</strong> <span id="avg-stop-time">-</span></p>
-            </div>
             <ul id="stops-list"></ul>
-        </div>
-
-        <div id="analysis" class="tab-content">
-            <h4>Detaylı Analiz</h4>
-            <div class="analysis-section">
-                <h5>📊 Performans Metrikleri</h5>
-                <p><strong>Rota Verimliliği:</strong> <span id="route-efficiency">-</span></p>
-                <p><strong>Hız Değişkenliği:</strong> <span id="speed-variation">-</span></p>
-                <p><strong>Sabit Hız Oranı:</strong> <span id="constant-speed">-</span></p>
-            </div>
-            <div class="analysis-section">
-                <h5>⛽ Yakıt & Maliyet (Tahmini)</h5>
-                <p><strong>Yakıt Tüketimi:</strong> <span id="fuel-consumption">-</span></p>
-                <p><strong>CO2 Salınımı:</strong> <span id="co2-emissions">-</span></p>
-                <p><strong>Yakıt Maliyeti:</strong> <span id="fuel-cost">-</span></p>
-            </div>
-            <div class="analysis-section">
-                <h5>⚠️ Uyarılar</h5>
-                <div id="alerts-list"></div>
-            </div>
         </div>
 
         <div id="settings" class="tab-content">
             <h4>Ayarlar</h4>
             <p><label>Tarih Seç: <input type="date" id="datePicker"></label></p>
             <p><label>Hız Limiti (km/s): <input type="number" id="speedLimit" value="60" min="1"></label></p>
-            <p><label>Ort. Yakıt Tüketimi (L/100km): <input type="number" id="fuelConsumption" value="7" min="1" step="0.1"></label></p>
-            <p><label>Yakıt Fiyatı (TL/L): <input type="number" id="fuelPrice" value="22" min="1" step="0.1"></label></p>
             <p><label>Tema:
                 <select id="themeSelect">
                     <option value="light" selected>Açık</option>
@@ -98,7 +70,6 @@
             <p>
                 <button id="exportJSON">JSON İndir</button>
                 <button id="exportGPX">GPX İndir</button>
-                <button id="exportReport">Rapor İndir</button>
             </p>
         </div>
     </div>
