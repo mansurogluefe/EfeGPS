@@ -1,36 +1,82 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-    <title>EfeGPS - Üst Düzey Rota Analizi</title>
-    <meta charset="utf-8" />
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EfeGPS - Rota Analizi</title>
 
-    <!-- === KÜTÜPHANELER (Hotline için dist yolu kullanıldı) === -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
-    <script src="https://unpkg.com/leaflet.hotline@0.4.0/dist/leaflet.hotline.js"></script> <!-- DÜZELTME: dist/leaflet.hotline.js -->
+
+    <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/luxon@3.4.4/build/global/luxon.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.3.1"></script>
-    <!-- Geri kalan tüm CSS ve JavaScript kodu bir önceki mesajdaki ile aynıdır -->
-    <style>:root{--primary-color:#005eff;--panel-bg:rgba(255,255,255,.97)}body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overflow:hidden}#map{height:calc(100vh - 200px);width:100%}#chart-container{position:absolute;bottom:0;left:0;width:100%;height:200px;background:#fff;box-shadow:0 -2px 10px rgba(0,0,0,.1);z-index:1001}#loading-overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,.9);z-index:2000;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:1.5em;text-align:center;padding:20px}#sidebar{position:absolute;top:0;right:-350px;width:330px;height:100%;background:var(--panel-bg);box-shadow:-2px 0 10px rgba(0,0,0,.2);z-index:1002;transition:right .5s;display:flex;align-items:flex-start}#sidebar.open{right:0}#sidebar-content{padding:20px;width:100%;height:100%;overflow-y:auto;box-sizing:border-box}#sidebar h3{margin:0 0 15px;border-bottom:1px solid #ddd;padding-bottom:10px;color:var(--primary-color)}.tab-content{display:none}.tab-content.active{display:block}.tab-buttons{display:flex;margin-bottom:15px;border-bottom:1px solid #ddd}.tab-button{padding:10px 15px;cursor:pointer;border-bottom:3px solid transparent}.tab-button.active{border-bottom-color:var(--primary-color);font-weight:700}#stops-list{list-style:none;padding:0;max-height:40vh;overflow-y:auto}#stops-list li{padding:8px 5px;border-bottom:1px solid #eee;cursor:pointer}#stops-list li:hover{background-color:#e9f2ff}#toggle-btn{position:absolute;left:-30px;top:calc(50% - 30px);width:30px;height:60px;background:var(--panel-bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:24px;border-radius:8px 0 0 8px;box-shadow:-3px 0 8px rgba(0,0,0,.1)}.leaflet-control-layers-list{text-align:left}.leaflet-control-layers{border-radius:5px;box-shadow:0 1px 5px rgba(0,0,0,.4)}</style>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 </head>
-<body>
+<body data-theme="light">
+
 <div id="map"></div>
-<div id="chart-container"><canvas id="analyticsChart"></canvas></div>
-<div id="loading-overlay"><svg width="60" height="60" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="#005eff"><path d="M12,1A11,11,0,1,0,23,12,11,11,0,0,0,12,1Zm0,19a8,8,0,1,1,8-8A8,8,0,0,1,12,20Z" opacity=".25"/><path d="M10.72,19.9a8,8,0,0,1-6.5-9.79A7.77,7.77,0,0,1,10.4,4.16a8,8,0,0,1,9.49,6.52A1.54,1.54,0,0,0,21.38,12h.13a1.37,1.37,0,0,0,1.38-1.54,11,11,0,1,0-12.7,12.39A1.54,1.54,0,0,0,12,21.34h0A1.47,1.47,0,0,0,10.72,19.9Z"><animateTransform attributeName="transform" type="rotate" dur="0.75s" values="0 12 12;360 12 12" repeatCount="indefinite"/></path></svg><p style="margin-top:15px">Üst düzey veriler işleniyor...</p></div>
-<div id="sidebar">
+
+<div id="chart-container">
+    <canvas id="analyticsChart"></canvas>
+</div>
+
+<div id="loading-overlay">
+    <p>Veriler yükleniyor...</p>
+</div>
+
+<div id="sidebar" class="open">
     <div id="sidebar-content">
         <h3>Analiz Paneli</h3>
-        <div class="tab-buttons"><div class="tab-button active" onclick="openTab('summary')">Özet</div><div class="tab-button" onclick="openTab('stops')">Duraklamalar</div></div>
-        <div id="summary" class="tab-content active"><h4>Yolculuk Özeti</h4><p><strong>Toplam Mesafe:</strong> <span id="total-distance">-</span></p><p><strong>Maksimum Hız:</strong> <span id="max-speed">-</span></p><p><strong>Ortalama Hız (Sürüş):</strong> <span id="avg-speed">-</span></p><p><strong>Toplam Süre:</strong> <span id="total-time">-</span></p><p><strong>Toplam Sürüş Süresi:</strong> <span id="drive-time">-</span></p></div>
-        <div id="stops" class="tab-content"><h4>Duraklama Noktaları (<span id="stop-count">0</span>)</h4><ul id="stops-list"></ul></div>
+        <div class="tab-buttons">
+            <div class="tab-button active" onclick="openTab('summary')">Özet</div>
+            <div class="tab-button" onclick="openTab('stops')">Duraklamalar</div>
+            <div class="tab-button" onclick="openTab('settings')">Ayarlar</div>
+        </div>
+
+        <div id="summary" class="tab-content active">
+            <h4>Yolculuk Özeti</h4>
+            <p><strong>Toplam Mesafe:</strong> <span id="total-distance">-</span></p>
+            <p><strong>Maksimum Hız:</strong> <span id="max-speed">-</span></p>
+            <p><strong>Ortalama Hız:</strong> <span id="avg-speed">-</span></p>
+            <p><strong>Toplam Süre:</strong> <span id="total-time">-</span></p>
+            <p><strong>Toplam Sürüş Süresi:</strong> <span id="drive-time">-</span></p>
+        </div>
+
+        <div id="stops" class="tab-content">
+            <h4>Duraklama Noktaları (<span id="stop-count">0</span>)</h4>
+            <ul id="stops-list"></ul>
+        </div>
+
+        <div id="settings" class="tab-content">
+            <h4>Ayarlar</h4>
+            <p><label>Tarih Seç: <input type="date" id="datePicker"></label></p>
+            <p><label>Hız Limiti (km/s): <input type="number" id="speedLimit" value="60" min="1"></label></p>
+            <p><label>Tema:
+                <select id="themeSelect">
+                    <option value="light" selected>Açık</option>
+                    <option value="dark">Koyu</option>
+                </select>
+            </label></p>
+            <p>
+                <button id="exportJSON">JSON İndir</button>
+                <button id="exportGPX">GPX İndir</button>
+            </p>
+        </div>
     </div>
-    <div id="toggle-btn" onclick="toggleSidebar()">&raquo;</div>
+    <div id="toggle-btn" onclick="toggleSidebar()">«</div>
 </div>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-<script>const MIN_STOP_DURATION=3e5,GPS_DRIFT_RADIUS=50,firebaseConfig={apiKey:"AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfw-88",authDomain:"efegps-0505.firebaseapp.com",databaseURL:"https://efegps-0505-default-rtdb.firebaseio.com",projectId:"efegps-0505",storageBucket:"efegps-0505.firebasestorage.app",messagingSenderId:"266569948357",appId:"1:266569948357:web:f8b3f64ecfecbdabfe64ac",measurementId:"G-XXGYEQS40P"};firebase.initializeApp(firebaseConfig);const database=firebase.database(),map=L.map("map").setView([39.9,32.8],6),osmLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map),satelliteLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Tiles &copy; Esri"});function openTab(e){document.querySelectorAll(".tab-content, .tab-button").forEach(e=>e.classList.remove("active")),document.getElementById(e).classList.add("active"),document.querySelector(`.tab-button[onclick="openTab('${e}')"]`).classList.add("active")}function toggleSidebar(){document.getElementById("sidebar").classList.toggle("open"),document.getElementById("toggle-btn").innerHTML=document.getElementById("sidebar").classList.contains("open")?"«":"»"}function formatDuration(e){if(!e||e<0)return"0sn";const t=Math.floor(e/1e3%60),o=Math.floor(e/6e4%60),n=Math.floor(e/36e5);return[n>0?`${n}s`:"",o>0?`${o}d`:"",t>0?`${t}sn`:""].filter(Boolean).join(" ")||"0sn"}const dateStamp=(new Date).toISOString().slice(0,10),routeRef=database.ref(`konum_kayitlari/${dateStamp}`);routeRef.once("value").then(e=>{const t=e.val();if(!t)return void(document.getElementById("loading-overlay").innerHTML=`❌ Firebase'de bugün (${dateStamp}) için rota kaydı bulunamadı.`);const o=Object.values(t).sort((e,t)=>e.timestamp-t.timestamp).map(e=>({lat:e.latitude,lng:e.longitude,speed:e.speed||0,altitude:e.altitude||0,timestamp:e.timestamp}));if(o.length<2)return void(document.getElementById("loading-overlay").innerText="❌ Rota oluşturmak için yeterli kayıt yok.");const n=L.hotline(o.map(e=>[e.lat,e.lng,e.speed]),{min:0,max:90,palette:{0:"#28a745",.5:"#ffc107",1:"#dc3545"},weight:6,outlineWidth:1,outlineColor:"#000"}),a=[],s=L.layerGroup();let l=[];for(const r of o)r.speed<5?l.push(r):l.length>0&&(l[l.length-1].timestamp-l[0].timestamp>=MIN_STOP_DURATION&&L.latLng(l[0].lat,l[0].lng).distanceTo(L.latLng(l[l.length-1].lat,l[l.length-1].lng))<GPS_DRIFT_RADIUS&&a.push({lat:L.latLng(l[0].lat,l[0].lng).lat,lng:L.latLng(l[0].lat,l[0].lng).lng,startTime:l[0].timestamp,duration:l[l.length-1].timestamp-l[0].timestamp}),l=[]);const i=document.getElementById("stops-list");document.getElementById("stop-count").innerText=a.length,a.forEach((e,t)=>{const o=L.marker([e.lat,e.lng]).addTo(s).bindPopup(`<b>Duraklama #${t+1}</b><br>Süre: ${formatDuration(e.duration)}`),n=document.createElement("li");n.innerHTML=`<b>#${t+1}:</b> ${formatDuration(e.duration)} <small>(${(new Date(e.startTime)).toLocaleTimeString("tr-TR")})</small>`,n.onclick=()=>{map.setView([e.lat,e.lng],17),o.openPopup()},i.appendChild(n)}),L.control.layers({"🗺️ Sokak Haritası":osmLayer,"🛰️ Uydu Görüntüsü":satelliteLayer},{"<span style='color: green;'>H</span><span style='color: orange;'>ı</span><span style='color: red;'>z</span> Rotası":n,"🅿️ Duraklama Noktaları":s},{collapsed:!1}).addTo(map),n.addTo(map),s.addTo(map);let c=0,d=0;for(let u=1;u<o.length;u++)c+=L.latLng(o[u-1].lat,o[u-1].lng).distanceTo(L.latLng(o[u].lat,o[u].lng)),o[u].speed>1&&(d+=o[u].timestamp-o[u-1].timestamp);const p=Math.max(...o.map(e=>e.speed)),g=o[o.length-1].timestamp-o[0].timestamp,m=d>0?c/(d/1e3)*3.6:0;document.getElementById("total-distance").textContent=`${(c/1e3).toFixed(2)} km`,document.getElementById("max-speed").textContent=`${p.toFixed(2)} km/s`,document.getElementById("avg-speed").textContent=`${m.toFixed(2)} km/s`,document.getElementById("total-time").textContent=formatDuration(g),document.getElementById("drive-time").textContent=formatDuration(d),new Chart(document.getElementById("analyticsChart").getContext("2d"),{type:"line",data:{labels:o.map(e=>e.timestamp),datasets:[{label:"Hız (km/s)",data:o.map(e=>e.speed),borderColor:"#dc3545",backgroundColor:"rgba(220, 53, 69, 0.1)",yAxisID:"y_speed",tension:.4,fill:!0,pointRadius:0},{label:"Yükseklik (m)",data:o.map(e=>e.altitude),borderColor:"#007bff",backgroundColor:"rgba(0, 123, 255, 0.1)",yAxisID:"y_altitude",tension:.4,fill:!0,pointRadius:0}]},options:{responsive:!0,maintainAspectRatio:!1,interaction:{mode:"index",intersect:!1},scales:{x:{type:"time",time:{unit:"minute",displayFormats:{minute:"HH:mm"}}},y_speed:{position:"left",beginAtZero:!0,title:{display:!0,text:"Hız"}},y_altitude:{position:"right",beginAtZero:!1,title:{display:!0,text:"Yükseklik"},grid:{drawOnChartArea:!1}}}}}),document.getElementById("loading-overlay").style.display="none",map.fitBounds(n.getBounds()),toggleSidebar()}).catch(e=>{console.error("Firebase'den veri okunurken hata: ",e),document.getElementById("loading-overlay").innerHTML="❌ Firebase bağlantı hatası!<br><small>Lütfen internet bağlantınızı ve Firebase kurallarınızı kontrol edin.</small>"});</script>
+
+<!-- JS -->
+<script src="main.js"></script>
 </body>
 </html>
