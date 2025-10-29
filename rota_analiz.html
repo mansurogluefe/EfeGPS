@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EfeGPS Pro - Akıllı Araç Takip Sistemi</title>
+    <title>EfeGPS - Gelişmiş Rota Analizi</title>
 
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -21,433 +21,88 @@
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
-    <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body data-theme="dark">
+<body data-theme="light">
 
-<!-- Header -->
-<div id="header">
-    <div class="header-content">
-        <h1><i class="fas fa-satellite-dish"></i> EfeGPS Pro</h1>
-        <div id="live-status">
-            <div class="status-indicator" id="connection-status">
-                <i class="fas fa-circle"></i>
-                <span>CANLI BAĞLANTI</span>
-            </div>
-            <div class="vehicle-info">
-                <span id="current-speed">0 km/s</span>
-                <span id="last-update">--:--:--</span>
-            </div>
-        </div>
-    </div>
+<div id="map"></div>
+
+<div id="chart-container">
+    <canvas id="analyticsChart"></canvas>
 </div>
 
-<!-- Main Layout -->
-<div id="main-container">
-    <!-- Map -->
-    <div id="map-container">
-        <div id="map-controls">
-            <button id="btn-live" class="map-btn active"><i class="fas fa-play"></i> Canlı</button>
-            <button id="btn-history" class="map-btn"><i class="fas fa-history"></i> Geçmiş</button>
-            <button id="btn-satellite" class="map-btn"><i class="fas fa-globe"></i> Uydu</button>
-        </div>
-        <div id="map"></div>
-        <div id="live-marker-info">
-            <div class="info-card">
-                <h4><i class="fas fa-motorcycle"></i> Canlı Konum</h4>
-                <p><strong>Hız:</strong> <span id="live-speed">0 km/s</span></p>
-                <p><strong>Yön:</strong> <span id="live-bearing">0°</span></p>
-                <p><strong>Yükseklik:</strong> <span id="live-altitude">0 m</span></p>
-                <p><strong>Son Güncelleme:</strong> <span id="live-update">--:--:--</span></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Sidebar -->
-    <div id="sidebar" class="open">
-        <div id="sidebar-content">
-            <!-- Navigation -->
-            <div class="sidebar-nav">
-                <div class="nav-item active" data-tab="dashboard">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Kontrol Paneli</span>
-                </div>
-                <div class="nav-item" data-tab="analytics">
-                    <i class="fas fa-chart-line"></i>
-                    <span>Analizler</span>
-                </div>
-                <div class="nav-item" data-tab="history">
-                    <i class="fas fa-road"></i>
-                    <span>Rotalar</span>
-                </div>
-                <div class="nav-item" data-tab="settings">
-                    <i class="fas fa-cog"></i>
-                    <span>Ayarlar</span>
-                </div>
-            </div>
-
-            <!-- Tab Contents -->
-            <div class="tab-content active" id="dashboard">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon speed">
-                            <i class="fas fa-tachometer-alt"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="current-live-speed">0</h3>
-                            <p>Anlık Hız (km/s)</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon distance">
-                            <i class="fas fa-road"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="today-distance">0</h3>
-                            <p>Bugünkü Mesafe (km)</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-card">
-                            <div class="stat-icon fuel">
-                                <i class="fas fa-gas-pump"></i>
-                            </div>
-                            <div class="stat-info">
-                                <h3 id="today-fuel-cost">0</h3>
-                                <p>Bugünkü Yakıt (TL)</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon score">
-                            <i class="fas fa-star"></i>
-                        </div>
-                        <div class="stat-info">
-                            <h3 id="driving-score">100</h3>
-                            <p>Sürüş Puanı</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="quick-actions">
-                    <h4><i class="fas fa-bolt"></i> Hızlı İşlemler</h4>
-                    <div class="action-buttons">
-                        <button class="action-btn" id="btn-route-plan">
-                            <i class="fas fa-route"></i>
-                            <span>Rota Planla</span>
-                        </button>
-                        <button class="action-btn" id="btn-fuel-calc">
-                            <i class="fas fa-calculator"></i>
-                            <span>Yakıt Hesapla</span>
-                        </button>
-                        <button class="action-btn" id="btn-emergency">
-                            <i class="fas fa-phone-alt"></i>
-                            <span>Acil Durum</span>
-                        </button>
-                        <button class="action-btn" id="btn-share-live">
-                            <i class="fas fa-share-alt"></i>
-                            <span>Konum Paylaş</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="alerts-container">
-                    <h4><i class="fas fa-bell"></i> Son Uyarılar</h4>
-                    <div id="live-alerts">
-                        <div class="alert-item info">
-                            <i class="fas fa-info-circle"></i>
-                            <span>Sistem başlatıldı. Canlı takip aktif.</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-content" id="analytics">
-                <h3><i class="fas fa-chart-bar"></i> Detaylı Analizler</h3>
-
-                <div class="analysis-section">
-                    <h5>📈 Günlük İstatistikler</h5>
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <label>Toplam Mesafe</label>
-                            <span id="analytics-distance">0 km</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Ortalama Hız</label>
-                            <span id="analytics-avg-speed">0 km/s</span>
-                        </div>
-                    </div>
-                    <div class="stats-row">
-                        <div class="stat-item">
-                            <label>Maksimum Hız</label>
-                            <span id="analytics-max-speed">0 km/s</span>
-                        </div>
-                        <div class="stat-item">
-                            <label>Sürüş Süresi</label>
-                            <span id="analytics-drive-time">0s</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="analysis-section">
-                    <h5>⛽ Yakıt Analizi</h5>
-                    <div class="fuel-info">
-                        <div class="fuel-price">
-                            <label>Güncel Benzin Fiyatı</label>
-                            <div class="price-input">
-                                <input type="number" id="current-fuel-price" value="42.50" step="0.01">
-                                <span>TL/L</span>
-                            </div>
-                        </div>
-                        <div class="fuel-stats">
-                            <div class="fuel-stat">
-                                <span class="fuel-label">Bugünkü Tüketim</span>
-                                <span class="fuel-value" id="today-fuel">0 L</span>
-                            </div>
-                            <div class="fuel-stat">
-                                <span class="fuel-label">Toplam Maliyet</span>
-                                <span class="fuel-value" id="total-fuel-cost">0 TL</span>
-                            </div>
-                            <div class="fuel-stat">
-                                <span class="fuel-label">CO2 Salınımı</span>
-                                <span class="fuel-value" id="co2-emission">0 kg</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="analysis-section">
-                    <h5>🎯 Performans Metrikleri</h5>
-                    <div class="performance-metrics">
-                        <div class="metric">
-                            <label>Rota Verimliliği</label>
-                            <div class="metric-bar">
-                                <div class="metric-fill" id="efficiency-bar" style="width: 0%"></div>
-                            </div>
-                            <span id="efficiency-value">0%</span>
-                        </div>
-                        <div class="metric">
-                            <label>Hız İstikrarı</label>
-                            <div class="metric-bar">
-                                <div class="metric-fill" id="stability-bar" style="width: 0%"></div>
-                            </div>
-                            <span id="stability-value">0%</span>
-                        </div>
-                        <div class="metric">
-                            <label>Güvenlik Puanı</label>
-                            <div class="metric-bar">
-                                <div class="metric-fill" id="safety-bar" style="width: 0%"></div>
-                            </div>
-                            <span id="safety-value">0%</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="tab-content" id="history">
-                <h3><i class="fas fa-history"></i> Geçmiş Rotalar</h3>
-
-                <div class="date-selector">
-                    <label>Tarih Seçin:</label>
-                    <input type="date" id="history-date" value="">
-                </div>
-
-                <div class="route-list" id="route-list">
-                    <div class="route-item" data-date="2024-01-15">
-                        <div class="route-icon">
-                            <i class="fas fa-route"></i>
-                        </div>
-                        <div class="route-info">
-                            <h4>15 Ocak 2024</h4>
-                            <p>42.5 km • 1s 15d • 28.4 TL</p>
-                        </div>
-                        <button class="route-btn">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="export-actions">
-                    <button class="export-btn" id="export-pdf">
-                        <i class="fas fa-file-pdf"></i> PDF Rapor
-                    </button>
-                    <button class="export-btn" id="export-excel">
-                        <i class="fas fa-file-excel"></i> Excel
-                    </button>
-                    <button class="export-btn" id="export-gpx">
-                        <i class="fas fa-map-marked-alt"></i> GPX
-                    </button>
-                </div>
-            </div>
-
-            <div class="tab-content" id="settings">
-                <h3><i class="fas fa-sliders-h"></i> Sistem Ayarları</h3>
-
-                <div class="settings-section">
-                    <h5>🎨 Görünüm Ayarları</h5>
-                    <div class="theme-selector">
-                        <label>Tema:</label>
-                        <select id="theme-select">
-                            <option value="dark">Koyu Tema</option>
-                            <option value="light">Açık Tema</option>
-                            <option value="auto">Sistemle Uyumlu</option>
-                        </select>
-                    </div>
-                    <div class="map-style">
-                        <label>Harita Stili:</label>
-                        <select id="map-style">
-                            <option value="standard">Standart</option>
-                            <option value="satellite">Uydu Görünümü</option>
-                            <option value="terrain">Arazi</option>
-                            <option value="dark">Koyu Harita</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h5>⚡ Araç Ayarları</h5>
-                    <div class="vehicle-settings">
-                        <div class="setting-group">
-                            <label>Yakıt Türü:</label>
-                            <select id="fuel-type">
-                                <option value="benzin">Benzin</option>
-                                <option value="dizel">Dizel</option>
-                                <option value="lpg">LPG</option>
-                            </select>
-                        </div>
-                        <div class="setting-group">
-                            <label>Ort. Yakıt Tüketimi:</label>
-                            <div class="input-with-unit">
-                                <input type="number" id="avg-consumption" value="6.5" step="0.1">
-                                <span>L/100km</span>
-                            </div>
-                        </div>
-                        <div class="setting-group">
-                            <label>Hız Limiti Uyarısı:</label>
-                            <div class="input-with-unit">
-                                <input type="number" id="speed-limit" value="80" min="1">
-                                <span>km/s</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="settings-section">
-                    <h5>🔔 Bildirim Ayarları</h5>
-                    <div class="notification-settings">
-                        <label class="switch">
-                            <input type="checkbox" id="notif-speed" checked>
-                            <span class="slider"></span>
-                            <span class="switch-label">Hız Limit Uyarıları</span>
-                        </label>
-                        <label class="switch">
-                            <input type="checkbox" id="notif-maintenance" checked>
-                            <span class="slider"></span>
-                            <span class="switch-label">Bakım Hatırlatıcıları</span>
-                        </label>
-                        <label class="switch">
-                            <input type="checkbox" id="notif-weather">
-                            <span class="slider"></span>
-                            <span class="switch-label">Hava Durumu Uyarıları</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div class="settings-actions">
-                    <button class="save-btn" id="save-settings">
-                        <i class="fas fa-save"></i> Ayarları Kaydet
-                    </button>
-                    <button class="reset-btn" id="reset-settings">
-                        <i class="fas fa-undo"></i> Sıfırla
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <div id="sidebar-toggle">
-            <i class="fas fa-chevron-right"></i>
-        </div>
-    </div>
-</div>
-
-<!-- Charts Container -->
-<div id="charts-container">
-    <div class="chart-card">
-        <h4><i class="fas fa-tachometer-alt"></i> Hız Grafiği</h4>
-        <canvas id="speed-chart"></canvas>
-    </div>
-    <div class="chart-card">
-        <h4><i class="fas fa-mountain"></i> Yükseklik Profili</h4>
-        <canvas id="altitude-chart"></canvas>
-    </div>
-    <div class="chart-card">
-        <h4><i class="fas fa-gas-pump"></i> Yakıt Analizi</h4>
-        <canvas id="fuel-chart"></canvas>
-    </div>
-</div>
-
-<!-- Loading Overlay -->
 <div id="loading-overlay">
-    <div class="loading-content">
-        <div class="loading-spinner"></div>
-        <h3>EfeGPS Pro Başlatılıyor</h3>
-        <p>Sistem bileşenleri yükleniyor...</p>
-    </div>
+    <p>Veriler yükleniyor...</p>
 </div>
 
-<!-- Emergency Modal -->
-<div id="emergency-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-exclamation-triangle"></i> Acil Durum</h3>
-            <button class="close-modal">&times;</button>
+<div id="sidebar" class="open">
+    <div id="sidebar-content">
+        <h3>Gelişmiş Analiz Paneli</h3>
+        <div class="tab-buttons">
+            <div class="tab-button active" onclick="openTab('summary')">Özet</div>
+            <div class="tab-button" onclick="openTab('stops')">Duraklamalar</div>
+            <div class="tab-button" onclick="openTab('analysis')">Detaylı Analiz</div>
+            <div class="tab-button" onclick="openTab('settings')">Ayarlar</div>
         </div>
-        <div class="modal-body">
-            <p>Acil durum butonuna basıldı! Konumunuz paylaşılacak.</p>
-            <div class="emergency-actions">
-                <button class="btn-emergency-call">
-                    <i class="fas fa-phone"></i> Acil Araması Yap
-                </button>
-                <button class="btn-share-location">
-                    <i class="fas fa-share-location"></i> Konumu Paylaş
-                </button>
-                <button class="btn-cancel-emergency">
-                    <i class="fas fa-times"></i> İptal
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Fuel Price Modal -->
-<div id="fuel-modal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3><i class="fas fa-gas-pump"></i> Yakıt Hesaplayıcı</h3>
-            <button class="close-modal">&times;</button>
+        <div id="summary" class="tab-content active">
+            <h4>Yolculuk Özeti</h4>
+            <p><strong>Toplam Mesafe:</strong> <span id="total-distance">-</span></p>
+            <p><strong>Maksimum Hız:</strong> <span id="max-speed">-</span></p>
+            <p><strong>Ortalama Hız:</strong> <span id="avg-speed">-</span></p>
+            <p><strong>Toplam Süre:</strong> <span id="total-time">-</span></p>
+            <p><strong>Sürüş Süresi:</strong> <span id="drive-time">-</span></p>
+            <p><strong>Sürüş Puanı:</strong> <span id="driving-score">-</span></p>
         </div>
-        <div class="modal-body">
-            <div class="fuel-calculator">
-                <div class="calc-input">
-                    <label>Mesafe (km):</label>
-                    <input type="number" id="calc-distance" value="100">
-                </div>
-                <div class="calc-input">
-                    <label>Yakıt Fiyatı (TL/L):</label>
-                    <input type="number" id="calc-price" value="42.50" step="0.01">
-                </div>
-                <div class="calc-input">
-                    <label>Tüketim (L/100km):</label>
-                    <input type="number" id="calc-consumption" value="6.5" step="0.1">
-                </div>
-                <div class="calc-result">
-                    <h4>Tahmini Maliyet: <span id="calc-result">276.25 TL</span></h4>
-                </div>
+
+        <div id="stops" class="tab-content">
+            <h4>Duraklama Noktaları (<span id="stop-count">0</span>)</h4>
+            <div id="stops-summary">
+                <p><strong>Toplam Duraklama:</strong> <span id="total-stop-time">-</span></p>
+                <p><strong>Ortalama Duraklama:</strong> <span id="avg-stop-time">-</span></p>
+            </div>
+            <ul id="stops-list"></ul>
+        </div>
+
+        <div id="analysis" class="tab-content">
+            <h4>Detaylı Analiz</h4>
+            <div class="analysis-section">
+                <h5>📊 Performans Metrikleri</h5>
+                <p><strong>Rota Verimliliği:</strong> <span id="route-efficiency">-</span></p>
+                <p><strong>Hız Değişkenliği:</strong> <span id="speed-variation">-</span></p>
+                <p><strong>Sabit Hız Oranı:</strong> <span id="constant-speed">-</span></p>
+            </div>
+            <div class="analysis-section">
+                <h5>⛽ Yakıt & Maliyet (Tahmini)</h5>
+                <p><strong>Yakıt Tüketimi:</strong> <span id="fuel-consumption">-</span></p>
+                <p><strong>CO2 Salınımı:</strong> <span id="co2-emissions">-</span></p>
+                <p><strong>Yakıt Maliyeti:</strong> <span id="fuel-cost">-</span></p>
+            </div>
+            <div class="analysis-section">
+                <h5>⚠️ Uyarılar</h5>
+                <div id="alerts-list"></div>
             </div>
         </div>
+
+        <div id="settings" class="tab-content">
+            <h4>Ayarlar</h4>
+            <p><label>Tarih Seç: <input type="date" id="datePicker"></label></p>
+            <p><label>Hız Limiti (km/s): <input type="number" id="speedLimit" value="60" min="1"></label></p>
+            <p><label>Ort. Yakıt Tüketimi (L/100km): <input type="number" id="fuelConsumption" value="7" min="1" step="0.1"></label></p>
+            <p><label>Yakıt Fiyatı (TL/L): <input type="number" id="fuelPrice" value="22" min="1" step="0.1"></label></p>
+            <p><label>Tema:
+                <select id="themeSelect">
+                    <option value="light" selected>Açık</option>
+                    <option value="dark">Koyu</option>
+                </select>
+            </label></p>
+            <p>
+                <button id="exportJSON">JSON İndir</button>
+                <button id="exportGPX">GPX İndir</button>
+                <button id="exportReport">Rapor İndir</button>
+            </p>
+        </div>
     </div>
+    <div id="toggle-btn" onclick="toggleSidebar()">«</div>
 </div>
 
 <!-- JS -->
