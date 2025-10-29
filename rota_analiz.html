@@ -1,0 +1,79 @@
+<script>
+    // ... (firebaseConfig ve harita başlatma kodları aynı) ...
+
+    // 4. Firebase'den rota verisini çek ve işle
+    // Bugünün tarihini 'yyyy-aa-gg' formatında alalım
+    const today = new Date();
+    const dateStamp = today.getFullYear() + '-' +
+                      String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                      String(today.getDate()).padStart(2, '0');
+
+    // Veriyi çekeceğimiz Firebase yolu
+    const logPath = `konum_kayitlari/${dateStamp}`;
+    const routeRef = database.ref(logPath);
+
+    routeRef.once('value').then((snapshot) => {
+        const logs = snapshot.val(); // Bu sefer bir obje gelecek
+        if (!logs) {
+            document.getElementById('loading-overlay').innerText = `❌ Firebase'de bugün (${dateStamp}) için rota kaydı bulunamadı.`;
+            return;
+        }
+
+        // Firebase'den gelen obje'yi, zaman damgasına göre sıralanmış bir diziye çevirelim
+        const points = Object.values(logs)
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(log => ({
+                lat: log.latitude,
+                lng: log.longitude,
+                speed: log.speed || 0,
+                timestamp: log.timestamp
+            }));
+
+        if (points.length < 2) {
+            document.getElementById('loading-overlay').innerText = '❌ Rota oluşturmak için yeterli sayıda kayıt yok.';
+            return;
+        }
+
+        // Yükleniyor ekranını gizle
+        document.getElementById('loading-overlay').style.display = 'none';
+
+        const latlngs = points.map(p => [p.lat, p.lng]);
+        const polyline = L.polyline(latlngs, { color: '#005eff', weight: 5, opacity: 0.8 }).addTo(map);
+
+        map.fitBounds(polyline.getBounds());
+
+        L.polylineDecorator(polyline, {
+            patterns: [
+                { offset: '1%', repeat: 100, symbol: L.Symbol.arrowHead({ pixelSize: 15, pathOptions: { fillOpacity: 1, weight: 0, color: '#003c9e' }}) }
+            ]
+        }).addTo(map);
+
+        L.marker(latlngs[0], { title: `Başlangıç: ${new Date(points[0].timestamp).toLocaleTimeString()}` }).addTo(map).bindPopup('Başlangıç');
+        L.marker(latlngs[latlngs.length - 1], { title: `Bitiş: ${new Date(points[points.length-1].timestamp).toLocaleTimeString()}` }).addTo(map).bindPopup('Bitiş');
+
+        // Özet bilgileri hesapla
+        let totalDistance = 0;
+        for (let i = 0; i < latlngs.length - 1; i++) {
+            totalDistance += L.latLng(latlngs[i]).distanceTo(L.latLng(latlngs[i+1]));
+        }
+        const maxSpeed = Math.max(...points.map(p => p.speed));
+        const totalTime = points[points.length-1].timestamp - points[0].timestamp; // Milisaniye cinsinden
+
+        function formatDuration(ms) {
+            const totalSeconds = Math.floor(ms / 1000);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${hours} saat ${minutes} dakika`;
+        }
+
+        document.getElementById('total-distance').textContent = (totalDistance / 1000).toFixed(2) + ' km';
+        document.getElementById('max-speed').textContent = maxSpeed.toFixed(2) + ' km/s';
+        document.getElementById('total-time').textContent = formatDuration(totalTime);
+
+        toggleSidebar();
+
+    }).catch(error => {
+        console.error("Firebase'den veri okunurken hata: ", error);
+        document.getElementById('loading-overlay').innerText = '❌ Firebase bağlantı hatası!';
+    });
+</script>
