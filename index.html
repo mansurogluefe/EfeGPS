@@ -4,8 +4,10 @@
     <title>EfeGPS - Canlı Takip</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <style>
         body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         #map { height: 100vh; width: 100vw; }
@@ -23,43 +25,55 @@
         h3 { margin: 0 0 10px; }
         p { margin: 5px 0; }
         strong { color: #333; }
+        button {
+            margin-top:10px;
+            width:100%;
+            padding:8px;
+            background:#005eff;
+            color:#fff;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #0040cc; }
     </style>
 </head>
 <body>
 
 <div id="map"></div>
+
 <div id="info-panel">
     <h3>Motor Durumu</h3>
     <p><strong>Hız:</strong> <span id="speed">Yükleniyor...</span> km/s</p>
     <p><strong>Son Güncelleme:</strong> <span id="last-update">Yükleniyor...</span></p>
     <p><small>Veri bekleniyor...</small></p>
+
+    <!-- Rota Analizi Butonu -->
+    <button id="rotaBtn">Rota Analizi Sayfasına Git</button>
 </div>
 
-<!-- Firebase Kütüphaneleri -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
-    // 1. SENİN FIREBASE PROJE AYARLARIN
+    // Firebase Ayarları
     const firebaseConfig = {
-  apiKey: "AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfw-88",
-  authDomain: "efegps-0505.firebaseapp.com",
-  databaseURL: "https://efegps-0505-default-rtdb.firebaseio.com",
-  projectId: "efegps-0505",
-  storageBucket: "efegps-0505.firebasestorage.app",
-  messagingSenderId: "266569948357",
-  appId: "1:266569948357:web:f8b3f64ecfecbdabfe64ac",
-  measurementId: "G-XXGYEQS40P"
-};
-
-    // Firebase'i başlat
+        apiKey: "AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfw-88",
+        authDomain: "efegps-0505.firebaseapp.com",
+        databaseURL: "https://efegps-0505-default-rtdb.firebaseio.com",
+        projectId: "efegps-0505",
+        storageBucket: "efegps-0505.appspot.com",
+        messagingSenderId: "266569948357",
+        appId: "1:266569948357:web:f8b3f64ecfecbdabfe64ac",
+        measurementId: "G-XXGYEQS40P"
+    };
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
-    // Haritayı başlat
-    const map = L.map('map').setView([36.219, 36.169], 15); // Başlangıç konumu
-
-    // Harita katmanı (OpenStreetMap)
+    // Harita
+    const map = L.map('map').setView([36.219, 36.169], 15);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '© OpenStreetMap'
@@ -67,14 +81,13 @@
 
     // Motor ikonu
     const motorIcon = L.icon({
-        iconUrl: 'https://raw.githubusercontent.com/mansurogluefe/EfeGPS/main/motor_icon.png', // GitHub'a yükleyeceğimiz ikon
+        iconUrl: 'https://raw.githubusercontent.com/mansurogluefe/EfeGPS/main/motor_icon.png',
         iconSize: [50, 50],
         iconAnchor: [25, 25]
     });
-
     let motorMarker = null;
 
-    // 2. FIREBASE'DEN VERİYİ DİNLEME
+    // Firebase'den motor verisini dinle
     const motorRef = database.ref('motor_durumu');
     motorRef.on('value', (snapshot) => {
         const data = snapshot.val();
@@ -85,36 +98,28 @@
             const bearing = data.bearing;
             const lastUpdate = new Date(data.lastUpdate);
 
-            // Bilgi panelini güncelle
             document.getElementById('speed').textContent = speed;
             document.getElementById('last-update').textContent = lastUpdate.toLocaleTimeString('tr-TR');
             document.querySelector('#info-panel small').textContent = 'Veri alınıyor...';
 
-
             if (motorMarker) {
-                // Marker varsa konumunu güncelle
                 motorMarker.setLatLng([lat, lng]);
                 motorMarker.setRotationAngle(bearing);
             } else {
-                // Marker yoksa oluştur
-                motorMarker = L.marker([lat, lng], {
-                    icon: motorIcon,
-                    rotationAngle: bearing
-                }).addTo(map);
+                motorMarker = L.marker([lat, lng], { icon: motorIcon, rotationAngle: bearing }).addTo(map);
             }
 
-            // Haritayı marker'ın konumuna ortala
             map.setView([lat, lng], map.getZoom());
         }
     });
 
-    // Leaflet'e rotasyon yeteneği ekleyen plugin
+    // Marker rotasyonu plugin
     (function () {
         var proto_initIcon = L.Marker.prototype._initIcon;
         var proto_setPos = L.Marker.prototype._setPos;
         L.Marker.addInitHook(function () {
             var iconOptions = this.options.icon && this.options.icon.options;
-            var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
+            var iconAnchor = iconOptions && iconOptions.iconAnchor;
             if (iconAnchor) {
                 iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px');
             }
@@ -122,9 +127,7 @@
             this.options.rotationAngle = this.options.rotationAngle || 0;
         });
         L.Marker.include({
-            _initIcon: function () {
-                proto_initIcon.call(this);
-            },
+            _initIcon: function () { proto_initIcon.call(this); },
             _setPos: function (pos) {
                 proto_setPos.call(this, pos);
                 if (this.options.rotationAngle) {
@@ -132,19 +135,15 @@
                     this._icon.style[L.DomUtil.TRANSFORM] += ' rotate(' + this.options.rotationAngle + 'deg)';
                 }
             },
-            setRotationAngle: function (angle) {
-                this.options.rotationAngle = angle;
-                this.update();
-                return this;
-            },
-            setRotationOrigin: function (origin) {
-                this.options.rotationOrigin = origin;
-                this.update();
-                return this;
-            }
+            setRotationAngle: function (angle) { this.options.rotationAngle = angle; this.update(); return this; },
+            setRotationOrigin: function (origin) { this.options.rotationOrigin = origin; this.update(); return this; }
         });
     })();
 
+    // Rota Analizi buton tıklaması
+    document.getElementById('rotaBtn').addEventListener('click', () => {
+        window.location.href = 'rota_analiz.html';
+    });
 </script>
 </body>
 </html>
