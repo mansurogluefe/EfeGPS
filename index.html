@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>EfeGPS - Canlı Takip</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <style>
@@ -24,19 +24,18 @@
         p { margin: 5px 0; }
         strong { color: #333; }
         #rota-btn {
-            display: block;
-            width: 100%;
             margin-top: 10px;
-            padding: 8px 12px;
-            background-color: #005eff;
+            width: 100%;
+            padding: 8px;
+            background: #005eff;
             color: #fff;
-            text-align: center;
+            border: none;
             border-radius: 6px;
-            text-decoration: none;
+            cursor: pointer;
             font-weight: bold;
         }
         #rota-btn:hover {
-            background-color: #0040cc;
+            background: #0040cc;
         }
     </style>
 </head>
@@ -48,11 +47,7 @@
     <p><strong>Hız:</strong> <span id="speed">Yükleniyor...</span> km/s</p>
     <p><strong>Son Güncelleme:</strong> <span id="last-update">Yükleniyor...</span></p>
     <p><small>Veri bekleniyor...</small></p>
-
-    <!-- Telegram uyumlu rota analizi butonu -->
-    <a id="rota-btn" href="https://seninsite.com/rota_analiz.html" target="_blank">
-        Rota Analizi Sayfasına Git
-    </a>
+    <button id="rota-btn">Rota Analiz Sayfasına Git</button>
 </div>
 
 <!-- Firebase Kütüphaneleri -->
@@ -60,6 +55,7 @@
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+    // 1. Firebase ayarları
     const firebaseConfig = {
         apiKey: "AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfw-88",
         authDomain: "efegps-0505.firebaseapp.com",
@@ -73,12 +69,11 @@
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
 
+    // Harita
     const map = L.map('map').setView([36.219, 36.169], 15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap'
-    }).addTo(map);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(map);
 
+    // Motor ikonu
     const motorIcon = L.icon({
         iconUrl: 'https://raw.githubusercontent.com/mansurogluefe/EfeGPS/main/motor_icon.png',
         iconSize: [50, 50],
@@ -86,39 +81,41 @@
     });
 
     let motorMarker = null;
+
+    // Firebase veri dinleme
     const motorRef = database.ref('motor_durumu');
     motorRef.on('value', (snapshot) => {
         const data = snapshot.val();
-        if (!data) return;
+        if (data) {
+            const lat = data.latitude;
+            const lng = data.longitude;
+            const speed = data.speed;
+            const bearing = data.bearing;
+            const lastUpdate = new Date(data.lastUpdate);
 
-        const lat = data.latitude;
-        const lng = data.longitude;
-        const speed = data.speed;
-        const bearing = data.bearing;
-        const lastUpdate = new Date(data.lastUpdate);
+            document.getElementById('speed').textContent = speed;
+            document.getElementById('last-update').textContent = lastUpdate.toLocaleTimeString('tr-TR');
+            document.querySelector('#info-panel small').textContent = 'Veri alınıyor...';
 
-        document.getElementById('speed').textContent = speed;
-        document.getElementById('last-update').textContent = lastUpdate.toLocaleTimeString('tr-TR');
-        document.querySelector('#info-panel small').textContent = 'Veri alınıyor...';
+            if (motorMarker) {
+                motorMarker.setLatLng([lat, lng]);
+                motorMarker.setRotationAngle(bearing);
+            } else {
+                motorMarker = L.marker([lat, lng], { icon: motorIcon, rotationAngle: bearing }).addTo(map);
+            }
 
-        if (motorMarker) {
-            motorMarker.setLatLng([lat, lng]);
-            motorMarker.setRotationAngle(bearing);
-        } else {
-            motorMarker = L.marker([lat, lng], {icon: motorIcon, rotationAngle: bearing}).addTo(map);
+            map.setView([lat, lng], map.getZoom());
         }
-
-        map.setView([lat, lng], map.getZoom());
     });
 
-    // Marker rotasyonu için plugin
+    // Marker rotasyonu plugin
     (function () {
         var proto_initIcon = L.Marker.prototype._initIcon;
         var proto_setPos = L.Marker.prototype._setPos;
         L.Marker.addInitHook(function () {
             var iconOptions = this.options.icon && this.options.icon.options;
-            var iconAnchor = iconOptions && iconOptions.iconAnchor;
-            if (iconAnchor) iconAnchor = iconAnchor[0] + 'px ' + iconAnchor[1] + 'px';
+            var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
+            if (iconAnchor) { iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px'); }
             this.options.rotationOrigin = this.options.rotationOrigin || iconAnchor || 'center bottom';
             this.options.rotationAngle = this.options.rotationAngle || 0;
         });
@@ -135,7 +132,17 @@
             setRotationOrigin: function (origin) { this.options.rotationOrigin = origin; this.update(); return this; }
         });
     })();
-</script>
 
+    // Telegram Mini uyumlu yönlendirme
+    const rotaBtn = document.getElementById('rota-btn');
+    rotaBtn.addEventListener('click', () => {
+        const rotaURL = "https://seninsite.com/rota_analiz.html"; // kendi URL’inle değiştir
+        if (window.Telegram?.WebApp?.openLink) {
+            window.Telegram.WebApp.openLink(rotaURL);
+        } else {
+            window.location.href = rotaURL;
+        }
+    });
+</script>
 </body>
 </html>
