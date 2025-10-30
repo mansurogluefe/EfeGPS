@@ -8,151 +8,380 @@ const firebaseConfig = {
     messagingSenderId: "266569948357",
     appId: "1:266569948357:web:f8b3f64ecfecbdabfe64ac"
 };
-firebase.initializeApp(firebaseConfig);
+
+// DOM elementleri - NULL kontrolü ile
+function getElement(id) {
+    const element = document.getElementById(id);
+    if (!element) {
+        console.warn(`Element bulunamadı: ${id}`);
+    }
+    return element;
+}
+
+// Firebase başlatma ve hata kontrolü
+try {
+    if (!firebase.apps.length) {
+        firebase.initializeApp(firebaseConfig);
+        console.log('Firebase başarıyla başlatıldı');
+    }
+} catch (error) {
+    console.error('Firebase başlatma hatası:', error);
+    showError('Firebase bağlantı hatası!');
+}
+
 const database = firebase.database();
 
-// Hız renk skalası - kolayca değiştirilebilir
-const speedColorRanges = [
-    { maxSpeed: 20, color: '#00ff00', label: 'Çok Yavaş' },
-    { maxSpeed: 40, color: '#ffff00', label: 'Yavaş' },
-    { maxSpeed: 60, color: '#ff9900', label: 'Orta' },
-    { maxSpeed: 80, color: '#ff0000', label: 'Hızlı' },
-    { maxSpeed: Infinity, color: '#990000', label: 'Çok Hızlı' }
-];
-
-// DOM elementleri
-const loadingOverlay = document.getElementById('loading-overlay');
-const datePicker = document.getElementById('datePicker');
-const speedLimitInput = document.getElementById('speedLimit');
-const themeSelect = document.getElementById('themeSelect');
-const exportJSONBtn = document.getElementById('exportJSON');
-const exportGPXBtn = document.getElementById('exportGPX');
-const stopsList = document.getElementById('stops-list');
-const stopCount = document.getElementById('stop-count');
-const totalDistanceEl = document.getElementById('total-distance');
-const maxSpeedEl = document.getElementById('max-speed');
-const avgSpeedEl = document.getElementById('avg-speed');
-const totalTimeEl = document.getElementById('total-time');
-const driveTimeEl = document.getElementById('drive-time');
-
-// Leaflet map
-const map = L.map('map').setView([39.9,32.8],6);
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19}).addTo(map);
-
 // Global değişkenler
-let routeLayer, stopsLayer, analyticsChart;
+let map, routeLayer, stopsLayer, analyticsChart;
 let speedGradientLayers = [];
-let polylineDecorator;
+let currentPoints = [];
 
-// Sidebar functions
-function openTab(tabId) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-    document.querySelectorAll('.tab-button').forEach(el => el.classList.remove('active'));
-    document.getElementById(tabId).classList.add('active');
-    document.querySelector(`.tab-button[onclick="openTab('${tabId}')"]`).classList.add('active');
-}
+// Sayfa yüklendiğinde
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM yüklendi, init işlemleri başlıyor...');
+    initializeApp();
+});
 
-function toggleSidebar() {
-    const sidebar = document.getElementById('sidebar');
-    const toggleBtn = document.getElementById('toggle-btn');
-    sidebar.classList.toggle('open');
-    toggleBtn.innerHTML = sidebar.classList.contains('open') ? '«' : '»';
-}
+// Uygulama başlatma
+function initializeApp() {
+    showLoading('Uygulama başlatılıyor...');
 
-// Utility functions
-function formatDuration(ms) {
-    if (!ms) return '0sn';
-    const s = Math.floor(ms/1000%60);
-    const m = Math.floor(ms/60000%60);
-    const h = Math.floor(ms/3600000);
-    return `${h>0?h+'s ':''}${m>0?m+'d ':''}${s>0?s+'sn':''}`.trim() || '0sn';
-}
+    try {
+        // Haritayı başlat
+        initializeMap();
 
-function getColorForSpeed(speed) {
-    for (const range of speedColorRanges) {
-        if (speed <= range.maxSpeed) {
-            return range.color;
+        // Event listener'ları kur
+        setupEventListeners();
+
+        // Bugünkü tarihi yükle
+        const today = new Date().toISOString().slice(0, 10);
+        const datePicker = getElement('datePicker');
+        if (datePicker) {
+            datePicker.value = today;
         }
+
+        // Sayfayı yükle
+        setTimeout(() => {
+            loadRoute(today);
+        }, 500);
+
+    } catch (error) {
+        console.error('Uygulama başlatma hatası:', error);
+        showError('Uygulama başlatılamadı: ' + error.message);
     }
-    return speedColorRanges[speedColorRanges.length - 1].color;
 }
 
-function getSpeedRangeLabel(speed) {
-    for (const range of speedColorRanges) {
-        if (speed <= range.maxSpeed) {
-            return range.label;
+// Harita başlatma
+function initializeMap() {
+    try {
+        const mapElement = getElement('map');
+        if (!mapElement) {
+            throw new Error('Harita elementi bulunamadı');
         }
-    }
-    return 'Çok Hızlı';
-}
 
-// HIZ LİMİTİNE GÖRE RENK BELİRLEME - GÜNCELLENDİ
-function getColorForSpeedWithLimit(speed, speedLimit) {
-    if (speed > speedLimit) {
-        return '#ff0000'; // KIRMIZI - limiti aşmış
-    } else if (speed > speedLimit * 0.8) {
-        return '#ff9900'; // TURUNCU - limite yakın
-    } else {
-        return '#00ff00'; // YEŞİL - güvenli
-    }
-}
+        map = L.map('map', {
+            zoomControl: false,
+            tap: false
+        }).setView([39.9, 32.8], 6);
 
-// HIZ LİMİTİ DURUMU BELİRLEME
-function getSpeedLimitStatus(speed, speedLimit) {
-    if (speed > speedLimit) {
-        return 'Hız Limiti Aşıldı!';
-    } else if (speed > speedLimit * 0.8) {
-        return 'Limite Yakın';
-    } else {
-        return 'Güvenli';
+        // Tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Zoom kontrolü
+        L.control.zoom({
+            position: 'bottomright'
+        }).addTo(map);
+
+        console.log('Harita başarıyla yüklendi');
+    } catch (error) {
+        console.error('Harita başlatma hatası:', error);
+        showError('Harita yüklenemedi: ' + error.message);
     }
 }
 
-// HIZ LİMİTİ İSTATİSTİKLERİ HESAPLAMA
-function calculateSpeedLimitStats(points) {
-    const speedLimit = parseFloat(speedLimitInput.value) || 60;
-    let limitExceedCount = 0;
-    let maxExceedSpeed = 0;
-    let totalExceedTime = 0;
-    let lastExceedTime = null;
-
-    points.forEach((point, index) => {
-        if (point.speed > speedLimit) {
-            limitExceedCount++;
-            maxExceedSpeed = Math.max(maxExceedSpeed, point.speed);
-
-            // Süre hesaplama
-            if (lastExceedTime && index > 0) {
-                totalExceedTime += point.timestamp - points[index-1].timestamp;
+// Event listener'ları kur
+function setupEventListeners() {
+    // Tarih değişikliği
+    const datePicker = getElement('datePicker');
+    if (datePicker) {
+        datePicker.addEventListener('change', function() {
+            const selectedDate = this.value;
+            if (selectedDate) {
+                loadRoute(selectedDate);
             }
-            lastExceedTime = point.timestamp;
-        } else {
-            lastExceedTime = null;
-        }
+        });
+    }
+
+    // Filtre uygula butonu
+    const applyFiltersBtn = getElement('apply-filters');
+    if (applyFiltersBtn) {
+        applyFiltersBtn.addEventListener('click', function() {
+            applyDateTimeFilter();
+        });
+    }
+
+    // Menu toggle
+    const menuToggle = getElement('menu-toggle');
+    const sidebarClose = getElement('sidebar-close');
+    if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
+    if (sidebarClose) sidebarClose.addEventListener('click', toggleSidebar);
+
+    // Theme toggle
+    const themeToggle = getElement('theme-toggle');
+    if (themeToggle) {
+        themeToggle.addEventListener('click', toggleTheme);
+    }
+
+    // Quick date buttons
+    setupQuickDateSelector();
+
+    // Tab navigation
+    setupTabNavigation();
+
+    // Hız limit slider
+    setupSpeedLimitSlider();
+
+    console.log('Event listenerlar kuruldu');
+}
+
+// Hız limit slider event'ini güncelle
+function setupSpeedLimitSlider() {
+    const speedSlider = getElement('speedLimitSlider');
+    if (speedSlider) {
+        speedSlider.addEventListener('input', function() {
+            const speedValue = getElement('speedLimitValue');
+            if (speedValue) {
+                speedValue.textContent = this.value + ' km/s';
+            }
+            if (currentPoints.length > 0) {
+                // Hız limiti değiştiğinde rotayı yeniden çiz
+                updateMapWithPoints(currentPoints);
+            }
+        });
+    }
+}
+
+// Hızlı tarih seçici
+function setupQuickDateSelector() {
+    document.querySelectorAll('.date-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Tüm butonlardan active classını kaldır
+            document.querySelectorAll('.date-btn').forEach(b => {
+                b.classList.remove('active');
+            });
+
+            // Tıklanan butona active classını ekle
+            this.classList.add('active');
+
+            const daysAgo = parseInt(this.dataset.days);
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() - daysAgo);
+
+            const dateStr = targetDate.toISOString().slice(0, 10);
+            const datePicker = getElement('datePicker');
+            if (datePicker) {
+                datePicker.value = dateStr;
+            }
+            loadRoute(dateStr);
+        });
+    });
+}
+
+// Tab navigasyonu
+function setupTabNavigation() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const tabName = this.dataset.tab;
+            switchTab(tabName);
+        });
+    });
+}
+
+// Tab değiştirme
+function switchTab(tabName) {
+    // Tüm tabları gizle
+    document.querySelectorAll('.tab-pane').forEach(tab => {
+        tab.classList.remove('active');
     });
 
-    return {
-        exceedCount: limitExceedCount,
-        maxExceed: maxExceedSpeed,
-        exceedTime: totalExceedTime,
-        percentage: points.length > 0 ? ((limitExceedCount / points.length) * 100).toFixed(1) : '0'
-    };
+    // Tüm tab butonlarını pasif yap
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Hedef tabı göster
+    const targetTab = document.getElementById(`${tabName}-tab`);
+    const targetBtn = document.querySelector(`[data-tab="${tabName}"]`);
+
+    if (targetTab && targetBtn) {
+        targetTab.classList.add('active');
+        targetBtn.classList.add('active');
+    }
 }
 
-// Hıza göre renkli rota çizimi - HIZ LİMİTİ ENTEGRE EDİLDİ
+// Tarih ve saat filtreleme
+function applyDateTimeFilter() {
+    const datePicker = getElement('datePicker');
+    const startTime = getElement('startTime');
+    const endTime = getElement('endTime');
+
+    if (!datePicker || !startTime || !endTime) {
+        showToast('Form elementleri bulunamadı', 'error');
+        return;
+    }
+
+    const date = datePicker.value;
+    const startTimeValue = startTime.value;
+    const endTimeValue = endTime.value;
+
+    if (!date) {
+        showToast('Lütfen bir tarih seçin', 'error');
+        return;
+    }
+
+    showLoading('Filtrelenmiş veriler yükleniyor...');
+    loadFilteredRoute(date, startTimeValue, endTimeValue);
+}
+
+// Filtreli rota yükleme
+function loadFilteredRoute(dateStr, startTime, endTime) {
+    console.log('Filtreli rota yükleniyor:', dateStr, startTime, endTime);
+
+    database.ref(`konum_kayitlari/${dateStr}`).once('value')
+    .then(snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+            hideLoading();
+            showToast(`${dateStr} tarihine ait veri bulunamadı`, 'warning');
+            return;
+        }
+
+        let points = Object.values(data)
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(p => ({
+                lat: p.latitude,
+                lng: p.longitude,
+                speed: isNaN(p.speed) ? 0 : p.speed,
+                altitude: p.altitude || 0,
+                timestamp: p.timestamp,
+                time: new Date(p.timestamp)
+            }));
+
+        // Zaman filtrelemesi uygula
+        if (startTime && endTime) {
+            const startDateTime = new Date(`${dateStr}T${startTime}`).getTime();
+            const endDateTime = new Date(`${dateStr}T${endTime}`).getTime();
+
+            points = points.filter(p => {
+                return p.timestamp >= startDateTime && p.timestamp <= endDateTime;
+            });
+
+            console.log(`Zaman filtresi uygulandı: ${points.length} nokta kaldı`);
+        }
+
+        if (points.length < 2) {
+            hideLoading();
+            showToast('Filtreleme sonucu yeterli veri bulunamadı', 'warning');
+            return;
+        }
+
+        // Haritayı güncelle
+        updateMapWithPoints(points);
+        hideLoading();
+        showToast('Filtreleme uygulandı', 'success');
+
+    })
+    .catch(error => {
+        console.error('Filtreli veri yükleme hatası:', error);
+        hideLoading();
+        showToast('Veri yüklenirken hata oluştu', 'error');
+    });
+}
+
+// Ana rota yükleme fonksiyonu
+function loadRoute(dateStr) {
+    console.log('Rota yükleniyor:', dateStr);
+    showLoading(`${dateStr} tarihine ait veriler yükleniyor...`);
+
+    // Önceki katmanları temizle
+    clearMapLayers();
+
+    // DOM'u sıfırla
+    resetDisplay();
+
+    if (!dateStr) {
+        hideLoading();
+        showToast('Geçersiz tarih!', 'error');
+        return;
+    }
+
+    database.ref(`konum_kayitlari/${dateStr}`).once('value')
+    .then(snapshot => {
+        const data = snapshot.val();
+        if (!data) {
+            hideLoading();
+            showToast(`${dateStr} tarihine ait veri bulunamadı`, 'warning');
+            return;
+        }
+
+        let points = Object.values(data)
+            .sort((a, b) => a.timestamp - b.timestamp)
+            .map(p => ({
+                lat: p.latitude,
+                lng: p.longitude,
+                speed: isNaN(p.speed) ? 0 : p.speed,
+                altitude: p.altitude || 0,
+                timestamp: p.timestamp,
+                time: new Date(p.timestamp)
+            }));
+
+        console.log(`${points.length} nokta yüklendi`);
+
+        if (points.length < 2) {
+            hideLoading();
+            showToast('Yeterli kayıt bulunamadı', 'warning');
+            return;
+        }
+
+        // Haritayı güncelle
+        updateMapWithPoints(points);
+        hideLoading();
+        showToast(`${points.length} nokta başarıyla yüklendi`, 'success');
+
+    })
+    .catch(error => {
+        console.error('Veri yükleme hatası:', error);
+        hideLoading();
+        showToast('Veri yüklenirken hata oluştu: ' + error.message, 'error');
+    });
+}
+
+// Hız limitine göre renkli rota çizimi
 function createSpeedGradientRoute(points) {
-    speedGradientLayers.forEach(layer => map.removeLayer(layer));
+    // Önceki hız katmanlarını temizle
+    speedGradientLayers.forEach(layer => {
+        if (layer && map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+    });
     speedGradientLayers = [];
 
-    const speedLimit = parseFloat(speedLimitInput.value) || 60;
+    const speedSlider = getElement('speedLimitSlider');
+    if (!speedSlider) return;
+
+    const speedLimit = parseInt(speedSlider.value) || 60;
     const routeGroup = L.featureGroup();
 
+    // Segmentleri çiz
     for (let i = 1; i < points.length; i++) {
         const prevPoint = points[i-1];
         const currentPoint = points[i];
         const avgSpeed = (prevPoint.speed + currentPoint.speed) / 2;
 
-        // HIZ LİMİTİNE GÖRE RENK VE DURUM BELİRLE
+        // Hız limitine göre renk belirle
         const color = getColorForSpeedWithLimit(avgSpeed, speedLimit);
         const status = getSpeedLimitStatus(avgSpeed, speedLimit);
 
@@ -184,16 +413,46 @@ function createSpeedGradientRoute(points) {
     return routeGroup;
 }
 
+// Hız limitine göre renk belirleme
+function getColorForSpeedWithLimit(speed, speedLimit) {
+    if (speed > speedLimit) {
+        return '#ff0000'; // KIRMIZI - limiti aşmış
+    } else if (speed > speedLimit * 0.8) {
+        return '#ff9900'; // TURUNCU - limite yakın
+    } else {
+        return '#00ff00'; // YEŞİL - güvenli
+    }
+}
+
+// Hız limit durumu belirleme
+function getSpeedLimitStatus(speed, speedLimit) {
+    if (speed > speedLimit) {
+        return 'Hız Limiti Aşıldı!';
+    } else if (speed > speedLimit * 0.8) {
+        return 'Limite Yakın';
+    } else {
+        return 'Güvenli';
+    }
+}
+
 // Yön okları ekleme
 function addDirectionArrows(points) {
-    if (polylineDecorator) {
-        map.removeLayer(polylineDecorator);
-    }
+    // Önceki okları temizle
+    const existingArrows = speedGradientLayers.filter(layer =>
+        layer instanceof L.PolylineDecorator
+    );
+    existingArrows.forEach(layer => {
+        if (map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+    });
+
+    if (points.length < 2) return;
 
     const latlngs = points.map(p => [p.lat, p.lng]);
     const basePolyline = L.polyline(latlngs);
 
-    polylineDecorator = L.polylineDecorator(basePolyline, {
+    const arrowDecorator = L.polylineDecorator(basePolyline, {
         patterns: [
             {
                 offset: 25,
@@ -212,52 +471,18 @@ function addDirectionArrows(points) {
         ]
     }).addTo(map);
 
-    speedGradientLayers.push(polylineDecorator);
+    speedGradientLayers.push(arrowDecorator);
 }
 
-// Ana yükleme fonksiyonu
-function loadRoute(dateStr) {
-    loadingOverlay.style.display = 'flex';
-    stopsList.innerHTML = '';
-    stopCount.textContent = '0';
-    totalDistanceEl.textContent = '-';
-    maxSpeedEl.textContent = '-';
-    avgSpeedEl.textContent = '-';
-    totalTimeEl.textContent = '-';
-    driveTimeEl.textContent = '-';
+// Haritayı noktalarla güncelle
+function updateMapWithPoints(points) {
+    currentPoints = points;
 
-    const speedLimit = parseFloat(speedLimitInput.value) || 60;
-
-    database.ref(`konum_kayitlari/${dateStr}`).once('value')
-    .then(snapshot => {
-        const data = snapshot.val();
-        if(!data) {
-            loadingOverlay.innerHTML = `❌ ${dateStr} için veri yok`;
-            return;
-        }
-
-        let points = Object.values(data).sort((a,b) => a.timestamp - b.timestamp)
-            .map(p => ({
-                lat: p.latitude,
-                lng: p.longitude,
-                speed: isNaN(p.speed) ? 0 : p.speed,
-                altitude: p.altitude || 0,
-                timestamp: p.timestamp,
-                time: new Date(p.timestamp)
-            }));
-
-        if(points.length < 2) {
-            loadingOverlay.innerText = '❌ Yeterli kayıt yok';
-            return;
-        }
-
+    try {
         // Önceki katmanları temizle
-        if(routeLayer) map.removeLayer(routeLayer);
-        if(stopsLayer) map.removeLayer(stopsLayer);
-        speedGradientLayers.forEach(layer => map.removeLayer(layer));
-        speedGradientLayers = [];
+        clearMapLayers();
 
-        // Hıza göre renkli rota oluştur (HIZ LİMİTLİ)
+        // Hız limitine göre renkli rota çiz
         const speedRouteGroup = createSpeedGradientRoute(points);
 
         // Yön okları ekle
@@ -272,302 +497,366 @@ function loadRoute(dateStr) {
             dashArray: '5,5'
         }).addTo(map);
 
-        // Duraklamalar
-        const MIN_STOP = 3 * 60 * 1000; // 3 dakika
-        const GPS_DRIFT = 50; // metre
-        let stops = [], tempStop = [];
+        // Duraklamaları bul ve göster
+        findAndDisplayStops(points);
 
-        points.forEach((p, i) => {
-            if(p.speed < 5) {
-                tempStop.push(p);
-            } else {
-                if(tempStop.length > 1) {
-                    const t0 = tempStop[0].timestamp;
-                    const t1 = tempStop[tempStop.length - 1].timestamp;
-                    const dist = map.latLngToLayerPoint([tempStop[0].lat, tempStop[0].lng]).distanceTo(
-                        map.latLngToLayerPoint([tempStop[tempStop.length - 1].lat, tempStop[tempStop.length - 1].lng])
-                    );
-                    if(t1 - t0 >= MIN_STOP && dist < GPS_DRIFT) {
-                        stops.push({
-                            lat: tempStop[0].lat,
-                            lng: tempStop[0].lng,
-                            startTime: t0,
-                            duration: t1 - t0
-                        });
-                    }
-                }
-                tempStop = [];
-            }
-        });
-
-        // Son tempStop'u kontrol et
-        if(tempStop.length > 1) {
-            const t0 = tempStop[0].timestamp;
-            const t1 = tempStop[tempStop.length - 1].timestamp;
-            const dist = map.latLngToLayerPoint([tempStop[0].lat, tempStop[0].lng]).distanceTo(
-                map.latLngToLayerPoint([tempStop[tempStop.length - 1].lat, tempStop[tempStop.length - 1].lng])
-            );
-            if(t1 - t0 >= MIN_STOP && dist < GPS_DRIFT) {
-                stops.push({
-                    lat: tempStop[0].lat,
-                    lng: tempStop[0].lng,
-                    startTime: t0,
-                    duration: t1 - t0
-                });
-            }
-        }
-
-        // Duraklama marker'ları
-        stopsLayer = L.layerGroup();
-        stops.forEach((s, i) => {
-            const marker = L.marker([s.lat, s.lng]).addTo(stopsLayer)
-                .bindPopup(`<b>Duraklama #${i + 1}</b><br>Süre: ${formatDuration(s.duration)}<br>Başlangıç: ${new Date(s.startTime).toLocaleTimeString('tr-TR')}`);
-
-            const listItem = document.createElement('li');
-            listItem.innerHTML = `<b>#${i + 1}</b>: ${formatDuration(s.duration)} <small>(${new Date(s.startTime).toLocaleTimeString('tr-TR')})</small>`;
-            listItem.onclick = () => {
-                map.setView([s.lat, s.lng], 17);
-                marker.openPopup();
-            };
-            stopsList.appendChild(listItem);
-        });
-
-        stopCount.textContent = stops.length;
-        stopsLayer.addTo(map);
-
-        // Harita sınırlarını ayarla
-        map.fitBounds(speedRouteGroup.getBounds());
-
-        // Grafik oluştur
-        updateChart(points);
-
-        // İstatistikleri hesapla ve göster (HIZ LİMİTİ İSTATİSTİKLERİ EKLENDİ)
+        // İstatistikleri hesapla
         calculateAndDisplayStats(points);
 
-        loadingOverlay.style.display = 'none';
-    })
-    .catch(err => {
-        console.error('Firebase hatası:', err);
-        loadingOverlay.innerHTML = `❌ Firebase bağlantı hatası!<br>Lütfen internet ve Firebase kurallarını kontrol edin.`;
+        // Grafiği güncelle
+        updateChart(points);
+
+        // Hız limit analizi
+        updateSpeedLimitAnalysis(points);
+
+        // Harita sınırlarını ayarla
+        if (speedRouteGroup && speedRouteGroup.getBounds) {
+            map.fitBounds(speedRouteGroup.getBounds());
+        }
+
+    } catch (error) {
+        console.error('Harita güncelleme hatası:', error);
+        showToast('Harita güncellenirken hata oluştu', 'error');
+    }
+}
+
+// Duraklamaları bul ve göster
+function findAndDisplayStops(points) {
+    const MIN_STOP_DURATION = 3 * 60 * 1000; // 3 dakika
+    const stops = [];
+    let tempStop = [];
+
+    points.forEach((point, index) => {
+        if (point.speed < 5) { // 5 km/s altı duraklama
+            tempStop.push(point);
+        } else {
+            if (tempStop.length >= 2) {
+                const startTime = tempStop[0].timestamp;
+                const endTime = tempStop[tempStop.length - 1].timestamp;
+                const duration = endTime - startTime;
+
+                if (duration >= MIN_STOP_DURATION) {
+                    stops.push({
+                        lat: tempStop[0].lat,
+                        lng: tempStop[0].lng,
+                        startTime: startTime,
+                        duration: duration,
+                        points: [...tempStop]
+                    });
+                }
+            }
+            tempStop = [];
+        }
     });
+
+    // Son duraklamayı kontrol et
+    if (tempStop.length >= 2) {
+        const startTime = tempStop[0].timestamp;
+        const endTime = tempStop[tempStop.length - 1].timestamp;
+        const duration = endTime - startTime;
+
+        if (duration >= MIN_STOP_DURATION) {
+            stops.push({
+                lat: tempStop[0].lat,
+                lng: tempStop[0].lng,
+                startTime: startTime,
+                duration: duration,
+                points: [...tempStop]
+            });
+        }
+    }
+
+    displayStopsOnMap(stops);
+    displayStopsInList(stops);
+}
+
+// Duraklamaları haritada göster
+function displayStopsOnMap(stops) {
+    if (stopsLayer) {
+        map.removeLayer(stopsLayer);
+    }
+
+    stopsLayer = L.layerGroup();
+
+    stops.forEach((stop, index) => {
+        const marker = L.marker([stop.lat, stop.lng])
+            .bindPopup(`
+                <b>Duraklama #${index + 1}</b><br>
+                Süre: ${formatDuration(stop.duration)}<br>
+                Başlangıç: ${new Date(stop.startTime).toLocaleTimeString('tr-TR')}<br>
+                Nokta Sayısı: ${stop.points.length}
+            `)
+            .addTo(stopsLayer);
+    });
+
+    stopsLayer.addTo(map);
+}
+
+// Duraklamaları listeye ekle
+function displayStopsInList(stops) {
+    const stopsList = getElement('stops-list');
+    const stopCount = getElement('stop-count');
+
+    if (stopsList) {
+        stopsList.innerHTML = '';
+    }
+
+    if (stopCount) {
+        stopCount.textContent = stops.length;
+    }
+
+    stops.forEach((stop, index) => {
+        if (!stopsList) return;
+
+        const li = document.createElement('div');
+        li.className = 'stop-item';
+        li.innerHTML = `
+            <strong>Duraklama #${index + 1}</strong>
+            <div style="font-size: 12px; opacity: 0.8;">
+                ${formatDuration(stop.duration)} -
+                ${new Date(stop.startTime).toLocaleTimeString('tr-TR')}
+            </div>
+        `;
+
+        li.addEventListener('click', () => {
+            map.setView([stop.lat, stop.lng], 17);
+            // Marker popup'ını aç
+            map.eachLayer(layer => {
+                if (layer instanceof L.Marker && layer.getLatLng().equals([stop.lat, stop.lng])) {
+                    layer.openPopup();
+                }
+            });
+        });
+
+        stopsList.appendChild(li);
+    });
+}
+
+// İstatistikleri hesapla ve göster
+function calculateAndDisplayStats(points) {
+    let totalDistance = 0;
+    let totalDriveTime = 0;
+    let maxSpeed = 0;
+
+    for (let i = 1; i < points.length; i++) {
+        const dist = map.distance(
+            [points[i-1].lat, points[i-1].lng],
+            [points[i].lat, points[i].lng]
+        );
+        totalDistance += dist;
+
+        if (points[i].speed > 1) {
+            totalDriveTime += points[i].timestamp - points[i-1].timestamp;
+        }
+
+        maxSpeed = Math.max(maxSpeed, points[i].speed);
+    }
+
+    const totalTime = points.length > 1 ? points[points.length-1].timestamp - points[0].timestamp : 0;
+    const avgSpeed = totalDriveTime > 0 ? (totalDistance / (totalDriveTime / 1000)) * 3.6 : 0;
+
+    // DOM'u güncelle - SADECE MEVCUT ELEMENTLERİ
+    const totalDistanceEl = getElement('total-distance');
+    const maxSpeedEl = getElement('max-speed');
+    const driveTimeEl = getElement('drive-time');
+
+    if (totalDistanceEl) totalDistanceEl.textContent = (totalDistance / 1000).toFixed(2) + ' km';
+    if (maxSpeedEl) maxSpeedEl.textContent = maxSpeed.toFixed(1) + ' km/s';
+    if (driveTimeEl) driveTimeEl.textContent = formatDuration(totalDriveTime);
+
+    // Eksik elementler için console log
+    console.log('Toplam Süre:', formatDuration(totalTime));
+    console.log('Ortalama Hız:', avgSpeed.toFixed(1) + ' km/s');
+}
+
+// Hız limit analizi
+function updateSpeedLimitAnalysis(points) {
+    const speedSlider = getElement('speedLimitSlider');
+    const exceedCountEl = getElement('exceed-count');
+    const exceedTimeEl = getElement('exceed-time');
+
+    if (!speedSlider || !exceedCountEl || !exceedTimeEl) return;
+
+    const speedLimit = parseInt(speedSlider.value) || 60;
+    let exceedCount = 0;
+    let totalExceedTime = 0;
+    let maxExceedSpeed = 0;
+
+    points.forEach(point => {
+        if (point.speed > speedLimit) {
+            exceedCount++;
+            maxExceedSpeed = Math.max(maxExceedSpeed, point.speed);
+        }
+    });
+
+    // Basit süre hesaplama
+    totalExceedTime = exceedCount * 1000;
+
+    exceedCountEl.textContent = exceedCount;
+    exceedTimeEl.textContent = formatDuration(totalExceedTime);
+}
+
+// Yardımcı fonksiyonlar
+function showLoading(message = 'Yükleniyor...') {
+    const loadingOverlay = getElement('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+        const messageEl = loadingOverlay.querySelector('p');
+        if (messageEl) {
+            messageEl.textContent = message;
+        }
+    }
+}
+
+function hideLoading() {
+    const loadingOverlay = getElement('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'none';
+    }
+}
+
+function showToast(message, type = 'info') {
+    console.log(`[${type.toUpperCase()}] ${message}`);
+    // Basit toast implementasyonu
+    const toastContainer = getElement('toast-container');
+    if (toastContainer) {
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.textContent = message;
+        toastContainer.appendChild(toast);
+
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    } else {
+        // Fallback
+        alert(message);
+    }
+}
+
+function showError(message) {
+    showToast(message, 'error');
+}
+
+function toggleSidebar() {
+    const mobileSidebar = getElement('mobile-sidebar');
+    if (mobileSidebar) {
+        mobileSidebar.classList.toggle('sidebar-visible');
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.body.getAttribute('data-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    document.body.setAttribute('data-theme', newTheme);
+    showToast(`Tema ${newTheme === 'dark' ? 'koyu' : 'açık'} moda geçirildi`);
+}
+
+function formatDuration(ms) {
+    if (!ms || ms < 0) return '0sn';
+
+    const seconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    if (hours > 0) {
+        return `${hours}s ${minutes % 60}d`;
+    } else if (minutes > 0) {
+        return `${minutes}d ${seconds % 60}sn`;
+    } else {
+        return `${seconds}sn`;
+    }
+}
+
+function clearMapLayers() {
+    if (routeLayer) {
+        map.removeLayer(routeLayer);
+        routeLayer = null;
+    }
+
+    if (stopsLayer) {
+        map.removeLayer(stopsLayer);
+        stopsLayer = null;
+    }
+
+    speedGradientLayers.forEach(layer => {
+        if (layer && map.hasLayer(layer)) {
+            map.removeLayer(layer);
+        }
+    });
+    speedGradientLayers = [];
+}
+
+function resetDisplay() {
+    const elements = [
+        'total-distance', 'max-speed', 'drive-time',
+        'stop-count', 'exceed-count', 'exceed-time'
+    ];
+
+    elements.forEach(id => {
+        const element = getElement(id);
+        if (element) {
+            if (id === 'stop-count') {
+                element.textContent = '0';
+            } else if (id === 'exceed-count' || id === 'exceed-time') {
+                element.textContent = '0';
+            } else {
+                element.textContent = '-';
+            }
+        }
+    });
+
+    const stopsList = getElement('stops-list');
+    if (stopsList) {
+        stopsList.innerHTML = '';
+    }
 }
 
 // Grafik güncelleme
 function updateChart(points) {
-    const labels = points.map(p => new Date(p.timestamp));
-    const speedData = points.map(p => p.speed);
-    const altData = points.map(p => p.altitude);
+    const ctx = document.getElementById('analyticsChart');
+    if (!ctx) return;
 
-    if(analyticsChart) {
+    if (analyticsChart) {
         analyticsChart.destroy();
     }
 
-    const ctx = document.getElementById('analyticsChart').getContext('2d');
+    const labels = points.map(p => new Date(p.timestamp));
+    const speedData = points.map(p => p.speed);
+
     analyticsChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,
-            datasets: [
-                {
-                    label: 'Hız (km/s)',
-                    data: speedData,
-                    borderColor: '#dc3545',
-                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                    yAxisID: 'y_speed',
-                    fill: true,
-                    pointRadius: 0,
-                    tension: 0.4
-                },
-                {
-                    label: 'Yükseklik (m)',
-                    data: altData,
-                    borderColor: '#007bff',
-                    backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                    yAxisID: 'y_altitude',
-                    fill: true,
-                    pointRadius: 0,
-                    tension: 0.4
-                }
-            ]
+            datasets: [{
+                label: 'Hız (km/s)',
+                data: speedData,
+                borderColor: '#005eff',
+                backgroundColor: 'rgba(0, 94, 255, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
             scales: {
                 x: {
                     type: 'time',
                     time: {
-                        unit: 'minute',
-                        displayFormats: { minute: 'HH:mm' }
+                        unit: 'hour'
                     }
                 },
-                y_speed: {
-                    position: 'left',
-                    beginAtZero: true,
-                    title: { display: true, text: 'Hız (km/s)' }
-                },
-                y_altitude: {
-                    position: 'right',
-                    beginAtZero: false,
-                    title: { display: true, text: 'Yükseklik (m)' },
-                    grid: { drawOnChartArea: false }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            if (context.dataset.label === 'Hız (km/s)') {
-                                const speedLimit = parseFloat(speedLimitInput.value) || 60;
-                                const speed = context.parsed.y;
-                                let statusInfo = '';
-                                if (speed > speedLimit) {
-                                    statusInfo = ` - ⚠️ Limit Aşıldı!`;
-                                } else if (speed > speedLimit * 0.8) {
-                                    statusInfo = ` - 🟡 Limite Yakın`;
-                                }
-                                return `Hız: ${speed.toFixed(1)} km/s${statusInfo}`;
-                            }
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(1)} m`;
-                        }
-                    }
+                y: {
+                    beginAtZero: true
                 }
             }
         }
     });
 }
 
-// İstatistik hesaplama - HIZ LİMİTİ BİLGİSİ EKLENDİ
-function calculateAndDisplayStats(points) {
-    let totalDist = 0;
-    let totalDrive = 0;
-
-    for(let i = 1; i < points.length; i++) {
-        totalDist += map.distance([points[i-1].lat, points[i-1].lng], [points[i].lat, points[i].lng]);
-        if(points[i].speed > 1) {
-            totalDrive += points[i].timestamp - points[i-1].timestamp;
-        }
-    }
-
-    const maxSpeed = Math.max(...points.map(p => p.speed));
-    const avgSpeed = totalDrive > 0 ? (totalDist / (totalDrive / 1000)) * 3.6 : 0;
-
-    // HIZ LİMİTİ İSTATİSTİKLERİ
-    const speedLimit = parseFloat(speedLimitInput.value) || 60;
-    const limitStats = calculateSpeedLimitStats(points);
-
-    totalDistanceEl.textContent = (totalDist / 1000).toFixed(2) + ' km';
-
-    // MAKSİMUM HIZ GÖSTERİMİNE LİMİT BİLGİSİ EKLE
-    if (maxSpeed > speedLimit) {
-        maxSpeedEl.innerHTML = `${maxSpeed.toFixed(2)} km/s <span style="color:red; font-weight:bold">(Limit +${(maxSpeed - speedLimit).toFixed(1)})</span>`;
-    } else {
-        maxSpeedEl.textContent = maxSpeed.toFixed(2) + ' km/s';
-    }
-
-    avgSpeedEl.textContent = avgSpeed.toFixed(2) + ' km/s';
-    totalTimeEl.textContent = formatDuration(points[points.length - 1].timestamp - points[0].timestamp);
-    driveTimeEl.textContent = formatDuration(totalDrive);
-
-    // HIZ LİMİTİ İSTATİSTİKLERİNİ KONSOLA YAZ (isteğe bağlı)
-    if (limitStats.exceedCount > 0) {
-        console.log(`🚨 Hız Limiti İstatistikleri:`);
-        console.log(`   - ${limitStats.exceedCount} noktada limit aşılmış (${limitStats.percentage}%)`);
-        console.log(`   - Maksimum aşım: ${limitStats.maxExceed.toFixed(1)} km/s`);
-        console.log(`   - Toplam aşım süresi: ${formatDuration(limitStats.exceedTime)}`);
-    }
-}
-
-// Event listener'lar
-datePicker.addEventListener('change', () => loadRoute(datePicker.value));
-speedLimitInput.addEventListener('change', () => loadRoute(datePicker.value));
-themeSelect.addEventListener('change', () => {
-    document.body.setAttribute('data-theme', themeSelect.value);
-});
-
-// Export JSON
-exportJSONBtn.addEventListener('click', () => {
-    if(!routeLayer) {
-        alert('Önce rota yüklenmeli!');
-        return;
-    }
-
-    const routeData = {
-        date: datePicker.value,
-        points: routeLayer.getLatLngs().map((latlng, index) => ({
-            lat: latlng.lat,
-            lng: latlng.lng,
-            index: index
-        }))
-    };
-
-    const dataStr = JSON.stringify(routeData, null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `rota_${datePicker.value || 'export'}.json`;
-    a.click();
-});
-
-// Export GPX
-exportGPXBtn.addEventListener('click', () => {
-    if(!routeLayer) {
-        alert('Önce rota yüklenmeli!');
-        return;
-    }
-
-    database.ref(`konum_kayitlari/${datePicker.value}`).once('value')
-    .then(snapshot => {
-        const data = snapshot.val();
-        if(!data) {
-            alert('Veri bulunamadı!');
-            return;
-        }
-
-        const points = Object.values(data).sort((a, b) => a.timestamp - b.timestamp);
-
-        let gpx = `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="EfeGPS">
-    <trk>
-        <name>Rota ${datePicker.value}</name>
-        <trkseg>
-`;
-
-        points.forEach(p => {
-            gpx += `            <trkpt lat="${p.latitude}" lon="${p.longitude}">
-                <time>${new Date(p.timestamp).toISOString()}</time>
-                <speed>${p.speed || 0}</speed>
-                ${p.altitude ? `<ele>${p.altitude}</ele>` : ''}
-            </trkpt>
-`;
-        });
-
-        gpx += `        </trkseg>
-    </trk>
-</gpx>`;
-
-        const blob = new Blob([gpx], { type: "application/gpx+xml" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `rota_${datePicker.value || 'export'}.gpx`;
-        a.click();
-    })
-    .catch(err => {
-        console.error('GPX export hatası:', err);
-        alert('GPX dosyası oluşturulurken hata oluştu!');
-    });
-});
-
-// Başlangıçta bugünkü tarih
-const today = new Date().toISOString().slice(0, 10);
-datePicker.value = today;
-loadRoute(today);
-
 // Hata yönetimi
 window.addEventListener('error', function(e) {
     console.error('Global hata:', e.error);
-    loadingOverlay.innerHTML = `❌ Bir hata oluştu!<br>Lütfen sayfayı yenileyin.`;
+    showError('Bir hata oluştu');
 });
