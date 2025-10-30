@@ -453,22 +453,23 @@ function addDirectionArrows(points) {
     const basePolyline = L.polyline(latlngs);
 
     const arrowDecorator = L.polylineDecorator(basePolyline, {
-        patterns: [
-            {
-                offset: 25,
-                repeat: 50,
-                symbol: L.Symbol.arrowHead({
-                    pixelSize: 15,
-                    polygon: false,
-                    pathOptions: {
-                        stroke: true,
-                        color: '#005eff',
-                        weight: 2,
-                        opacity: 0.8
-                    }
-                })
-            }
-        ]
+        patterns: [{
+            offset: 25,
+            repeat: 50,
+            symbol: L.Symbol.arrowHead({
+                pixelSize: 12,
+                polygon: true,
+                pathOptions: {
+                    stroke: true,
+                    color: '#005eff',
+                    weight: 3,
+                    opacity: 0.9,
+                    fill: true,
+                    fillColor: '#005eff',
+                    fillOpacity: 0.8
+                }
+            })
+        }]
     }).addTo(map);
 
     speedGradientLayers.push(arrowDecorator);
