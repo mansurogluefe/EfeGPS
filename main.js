@@ -54,7 +54,7 @@ function initializeApp() {
         setupEventListeners();
 
         // Bugünkü tarihi yükle
-        const today = new Date().toISOString().slice(0, 10);
+        const today = new Date().toLocaleDateString('en-CA');
         const datePicker = getElement('datePicker');
         if (datePicker) {
             datePicker.value = today;
@@ -180,7 +180,7 @@ function setupQuickDateSelector() {
             const targetDate = new Date();
             targetDate.setDate(targetDate.getDate() - daysAgo);
 
-            const dateStr = targetDate.toISOString().slice(0, 10);
+            const dateStr = targetDate.toLocaleDateString('en-CA');
             const datePicker = getElement('datePicker');
             if (datePicker) {
                 datePicker.value = dateStr;
