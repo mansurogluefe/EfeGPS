@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Efe Canlı Çeviri</title>
+<style>
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
+  background-color: #0f1720;
+  color: #e6eef8;
+  margin: 0;
+  padding: 16px;
+}
+h1 { text-align: center; font-size: 22px; margin-bottom: 16px; }
+.box {
+  background: #0b1220;
+  padding: 16px;
+  border-radius: 12px;
+}
+button {
+  padding: 12px 16px;
+  margin: 4px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+}
+button.start { background-color: #2b6cb0; color: white; }
+button.stop { background-color: #b02b2b; color: white; }
+.text-block {
+  background-color: #061022;
+  border-radius: 8px;
+  padding: 10px;
+  min-height: 40px;
+  margin-top: 8px;
+  white-space: pre-wrap;
+}
+.lang { font-size: 12px; color: #8aa0c4; margin-top: 8px; }
+#status { margin-left: 10px; font-size: 14px; color:#9fb2d6; }
+</style>
+</head>
+<body>
+
+<h1>Efe Canlı Çeviri</h1>
+
+<div class="box">
+  <button id="startBtn" class="start">Başlat</button>
+  <button id="stopBtn" class="stop" disabled>Durdur</button>
+  <span id="status">Hazır</span>
+
+  <div class="lang">İngilizce</div>
+  <div id="enText" class="text-block"></div>
+
+  <div class="lang">Türkçe</div>
+  <div id="trText" class="text-block"></div>
+</div>
+
+<script>
+const ELEVEN_KEY = "sk_acbd02bf7e09204c26c77281e82bd7b07f4ea0b6ef55413e";
+
+const startBtn = document.getElementById("startBtn");
+const stopBtn = document.getElementById("stopBtn");
+const status = document.getElementById("status");
+const enBox = document.getElementById("enText");
+const trBox = document.getElementById("trText");
+
+let stream, recorder, isRecording = false;
+
+function scrollDown() {
+  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+}
+
+async function sendToElevenLabs(blob) {
+  const form = new FormData();
+  form.append("file", blob, "audio.wav");
+  form.append("model_id", "eleven_multilingual_v2");
+
+  const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text/stream", {
+    method: "POST",
+    headers: { "xi-api-key": ELEVEN_KEY },
+    body: form
+  });
+
+  return res.json();
+}
+
+async function translateTR(text) {
+  const r = await fetch("https://libretranslate.com/translate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ q: text, source: "en", target: "tr" })
+  });
+  return r.json();
+}
+
+startBtn.onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert("Mikrofon izni yok: " + e.message);
+    return;
+  }
+
+  recorder = new MediaRecorder(stream);
+
+  recorder.ondataavailable = async (e) => {
+    if (!e.data || e.data.size < 2000) return; // boş chunkları atla
+
+    status.innerText = "Çevriliyor...";
+
+    try {
+      const stt = await sendToElevenLabs(e.data);
+      const english = stt.text || stt.transcription || "";
+
+      if (!english.trim()) return;  // BOŞSA HİÇBİR ŞEY EKLEME → SPAM YOK
+
+      enBox.innerText += english + "\n";
+      scrollDown();
+
+      const tr = await translateTR(english);
+      const trTxt = tr.translatedText || "";
+
+      if (trTxt.trim()) {
+        trBox.innerText += trTxt + "\n";
+        scrollDown();
+      }
+
+      status.innerText = "Hazır";
+
+    } catch (err) {
+      status.innerText = "Hata: " + err.message;
+      console.log(err);
+    }
+  };
+
+  recorder.start(1500); // iPhone için en stabil chunk
+  isRecording = true;
+
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  status.innerText = "Dinleniyor...";
+};
+
+stopBtn.onclick = () => {
+  if (isRecording) {
+    recorder.stop();
+    stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    status.innerText = "Durduruldu";
+  }
+};
+</script>
+</body>
+</html>
