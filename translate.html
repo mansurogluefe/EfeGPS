@@ -3,60 +3,39 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Efe Canlı Çeviri</title>
+<title>Efe Canlı Çeviri v2</title>
 <style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto;
-  background-color: #0f1720;
-  color: #e6eef8;
-  margin: 0;
-  padding: 16px;
-}
-h1 { text-align: center; font-size: 22px; margin-bottom: 16px; }
-.box {
-  background: #0b1220;
-  padding: 16px;
-  border-radius: 12px;
-}
-button {
-  padding: 12px 16px;
-  margin: 4px;
-  border-radius: 8px;
-  border: none;
-  font-weight: 600;
-}
-button.start { background-color: #2b6cb0; color: white; }
-button.stop { background-color: #b02b2b; color: white; }
-.text-block {
-  background-color: #061022;
-  border-radius: 8px;
-  padding: 10px;
-  min-height: 40px;
-  margin-top: 8px;
-  white-space: pre-wrap;
-}
-.lang { font-size: 12px; color: #8aa0c4; margin-top: 8px; }
-#status { margin-left: 10px; font-size: 14px; color:#9fb2d6; }
+  body {font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:#0f172a;color:#e2e8f0;margin:0;padding:20px;}
+  h1 {text-align:center;font-size:24px;margin-bottom:20px;color:#60a5fa;}
+  .box {background:#1e293b;padding:20px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.4);}
+  button {padding:14px 20px;margin:5px;border:none;border-radius:12px;font-weight:700;cursor:pointer;transition:0.2s;}
+  button.start {background:#2563eb;color:white;}
+  button.stop {background:#dc2626;color:white;}
+  button:disabled {opacity:0.5;cursor:not-allowed;}
+  #status {margin-left:12px;font-size:15px;color:#93c5fd;vertical-align:middle;}
+  .lang {font-size:13px;color:#94a3b8;margin:12px 0 4px;}
+  .text-block {background:#0f172a;padding:14px;border-radius:10px;min-height:80px;font-size:16px;line-height:1.5;}
 </style>
 </head>
 <body>
 
-<h1>Efe Canlı Çeviri</h1>
+<h1>Efe Canlı Çeviri v2</h1>
 
 <div class="box">
   <button id="startBtn" class="start">Başlat</button>
   <button id="stopBtn" class="stop" disabled>Durdur</button>
   <span id="status">Hazır</span>
 
-  <div class="lang">İngilizce</div>
+  <div class="lang">🇬🇧 İngilizce</div>
   <div id="enText" class="text-block"></div>
 
-  <div class="lang">Türkçe</div>
+  <div class="lang">🇹🇷 Türkçe</div>
   <div id="trText" class="text-block"></div>
 </div>
 
 <script>
-const ELEVEN_KEY = "sk_acbd02bf7e09204c26c77281e82bd7b07f4ea0b6ef55413e";
+// DEEPGRAM API KEY (senin keyin)
+const DEEPGRAM_KEY = "8b58f8fcf792acd4b0e5d823c3ddf68c8f70af40";
 
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -64,93 +43,123 @@ const status = document.getElementById("status");
 const enBox = document.getElementById("enText");
 const trBox = document.getElementById("trText");
 
-let stream, recorder, isRecording = false;
+let mediaRecorder, audioStream;
 
-function scrollDown() {
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+function scrollToBottom() {
+  window.scrollTo({top: document.body.scrollHeight, behavior: "smooth"});
 }
 
-async function sendToElevenLabs(blob) {
-  const form = new FormData();
-  form.append("file", blob, "audio.wav");
-  form.append("model_id", "eleven_multilingual_v2");
+// WAV encoder (Deepgram sadece WAV kabul ediyor)
+function encodeWAV(samples, sampleRate) {
+  const buffer = new ArrayBuffer(44 + samples.length * 2);
+  const view = new DataView(buffer);
 
-  const res = await fetch("https://api.elevenlabs.io/v1/speech-to-text/stream", {
-    method: "POST",
-    headers: { "xi-api-key": ELEVEN_KEY },
-    body: form
-  });
+  const writeString = (offset, string) => {
+    for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+  };
 
-  return res.json();
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + samples.length * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, samples.length * 2, true);
+
+  let offset = 44;
+  for (let i = 0; i < samples.length; i++) {
+    const s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    offset += 2;
+  }
+  return new Blob([buffer], {type: 'audio/wav'});
 }
 
-async function translateTR(text) {
-  const r = await fetch("https://libretranslate.com/translate", {
+async function transcribeWithDeepgram(blob) {
+  // WebM → AudioBuffer → WAV
+  const arrayBuffer = await blob.arrayBuffer();
+  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  const wavBlob = encodeWAV(audioBuffer.getChannelData(0), audioBuffer.sampleRate);
+
+  const response = await fetch("https://api.deepgram.com/v1/listen?model=nova-2&language=en", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ q: text, source: "en", target: "tr" })
+    headers: {
+      "Authorization": `Token ${DEEPGRAM_KEY}`,
+      "Content-Type": "audio/wav"
+    },
+    body: wavBlob
   });
-  return r.json();
+
+  if (!response.ok) throw new Error("Deepgram hatası: " + response.status);
+  const data = await response.json();
+  return data.results.channels[0].alternatives[0].transcript || "";
+}
+
+async function translateToTurkish(text) {
+  const res = await fetch("https://libretranslate.com/translate", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({q: text, source: "en", target: "tr", format: "text"})
+  });
+  const json = await res.json();
+  return json.translatedText || "";
 }
 
 startBtn.onclick = async () => {
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
   } catch (e) {
-    alert("Mikrofon izni yok: " + e.message);
+    alert("Mikrofon izni vermedin kanka: " + e.message);
     return;
   }
 
-  recorder = new MediaRecorder(stream);
+  mediaRecorder = new MediaRecorder(audioStream, {mimeType: "audio/webm"});
+  
+  mediaRecorder.ondataavailable = async (event) => {
+    if (event.data.size < 5000) return; // çok küçükse atla
 
-  recorder.ondataavailable = async (e) => {
-    if (!e.data || e.data.size < 2000) return; // boş chunkları atla
-
-    status.innerText = "Çevriliyor...";
+    status.textContent = "Çevriliyor...";
 
     try {
-      const stt = await sendToElevenLabs(e.data);
-      const english = stt.text || stt.transcription || "";
+      const english = await transcribeWithDeepgram(event.data);
+      if (!english.trim()) return;
 
-      if (!english.trim()) return;  // BOŞSA HİÇBİR ŞEY EKLEME → SPAM YOK
+      enBox.textContent += english + "\n";
+      scrollToBottom();
 
-      enBox.innerText += english + "\n";
-      scrollDown();
-
-      const tr = await translateTR(english);
-      const trTxt = tr.translatedText || "";
-
-      if (trTxt.trim()) {
-        trBox.innerText += trTxt + "\n";
-        scrollDown();
+      const turkish = await translateToTurkish(english);
+      if (turkish.trim()) {
+        trBox.textContent += turkish + "\n";
+        scrollToBottom();
       }
 
-      status.innerText = "Hazır";
-
+      status.textContent = "Dinliyor...";
     } catch (err) {
-      status.innerText = "Hata: " + err.message;
-      console.log(err);
+      console.error(err);
+      status.textContent = "Hata: " + err.message;
     }
   };
 
-  recorder.start(1500); // iPhone için en stabil chunk
-  isRecording = true;
-
+  mediaRecorder.start(1400); // 1.4 saniyede bir chunk (iOS + Android’de en stabil)
   startBtn.disabled = true;
   stopBtn.disabled = false;
-  status.innerText = "Dinleniyor...";
+  status.textContent = "Dinliyor...";
 };
 
 stopBtn.onclick = () => {
-  if (isRecording) {
-    recorder.stop();
-    stream.getTracks().forEach(t => t.stop());
-    isRecording = false;
-
-    startBtn.disabled = false;
-    stopBtn.disabled = true;
-    status.innerText = "Durduruldu";
-  }
+  if (mediaRecorder && mediaRecorder.state !== "inactive") mediaRecorder.stop();
+  if (audioStream) audioStream.getTracks().forEach(t => t.stop());
+  
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  status.textContent = "Durduruldu";
 };
 </script>
 </body>
