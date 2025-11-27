@@ -1,102 +1,155 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Efe Canlı Çeviri - % Progress + Kalan Saniye</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Efe Canlı Çeviri — Nihai Sürüm (Model İndir + % Gösterge)</title>
 <style>
-  body {font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:#0f172a;color:#e2e8f0;margin:0;padding:20px;}
-  h1 {text-align:center;font-size:26px;margin:20px 0;color:#60a5fa;}
-  .box {background:#1e293b;padding:24px;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,0.6);}
-  button {padding:12px 20px;margin:8px;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;}
-  button.start {background:#2563eb;color:white;}
-  button.stop {background:#dc2626;color:white;}
-  button:disabled {opacity:0.5;cursor:not-allowed;}
-  #status {margin-left:15px;font-size:15px;color:#93c5fd;font-weight:600;}
-
-  .chat {display:flex;flex-direction:column;gap:12px;margin-top:20px;}
-  .bubble {max-width:90%;padding:14px 18px;border-radius:16px;line-height:1.4;font-size:16px;word-wrap:break-word;}
+  body {font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:#071024;color:#e6f0ff;margin:0;padding:22px;}
+  h1 {text-align:center;font-size:24px;margin:12px 0;color:#60a5fa;}
+  .box {background:#0f1724;padding:18px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,0.6);max-width:980px;margin:12px auto;}
+  .controls {display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  button {padding:10px 14px;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;}
+  button.primary {background:#2563eb;color:white;}
+  button.warn {background:#dc2626;color:white;}
+  button.ghost {background:transparent;border:1px solid #2b3440;color:#cfe6ff;}
+  button:disabled {opacity:0.45;cursor:not-allowed;}
+  #status {margin-left:12px;font-size:15px;color:#93c5fd;font-weight:600;}
+  .progressWrap {margin-top:12px;background:#071827;padding:10px;border-radius:12px;border:1px solid #0e3a66;}
+  .progressBar {height:18px;background:#08345a;border-radius:10px;overflow:hidden;position:relative;}
+  .progressBar > i {position:absolute;left:0;top:0;bottom:0;width:0%;background:#2dd4bf;border-radius:10px;transition:width 260ms linear;}
+  .progressInfo {display:flex;justify-content:space-between;font-size:13px;margin-top:8px;color:#a7d2ff;}
+  .chat {display:flex;flex-direction:column;gap:12px;margin-top:18px;max-width:980px;margin-left:auto;margin-right:auto;}
+  .bubble {max-width:86%;padding:12px 16px;border-radius:14px;line-height:1.45;font-size:15px;word-wrap:break-word;}
   .en {align-self:flex-start;background:#1e40af;color:white;}
   .tr {align-self:flex-end;background:#16a34a;color:white;}
-
-  #logPanel {position:fixed;bottom:0;left:0;right:0;height:260px;background:#000;color:#0f0;padding:12px;font-family:monospace;font-size:13px;overflow-y:auto;border-top:4px solid #00ff00;z-index:9999;display:none;box-sizing:border-box;}
+  #logPanel {position:fixed;bottom:0;left:0;right:0;height:300px;background:#020200;color:#00ff88;padding:12px;font-family:monospace;font-size:13px;overflow-y:auto;border-top:4px solid #00cc88;z-index:9999;display:none;box-sizing:border-box;}
   #logPanel.show {display:block;}
-  #showLog {position:fixed;bottom:20px;right:20px;background:#00ff00;color:#000;padding:12px 18px;border-radius:40px;font-weight:bold;z-index:10000;box-shadow:0 6px 20px rgba(0,255,0,0.4);}
+  #showLog {position:fixed;bottom:18px;right:18px;background:#00ff88;color:#022;border-radius:40px;padding:10px 14px;font-weight:bold;z-index:10000;box-shadow:0 6px 30px rgba(0,255,150,0.15);}
+  .small {font-size:13px;color:#9fc9ff;}
+  .metaRow {display:flex;gap:14px;align-items:center;margin-top:8px;}
+  .pill {padding:6px 10px;border-radius:999px;background:#06283a;color:#bfefff;font-weight:600;font-size:13px;border:1px solid #093b52;}
 </style>
 </head>
 <body>
 
-<h1>Efe Canlı Çeviri - % Progress Gösteren</h1>
+<h1>Efe Canlı Çeviri — Nihai Sürüm</h1>
 
 <div class="box">
-  <button id="startBtn" class="start">Başlat</button>
-  <button id="stopBtn" class="stop" disabled>Durdur</button>
-  <span id="status">Model bekleniyor...</span>
+  <div class="controls">
+    <button id="downloadModelBtn" class="primary">Model İndir</button>
+    <button id="cancelDownloadBtn" class="ghost" disabled>İptal</button>
+    <button id="startBtn" class="primary" disabled>Başlat</button>
+    <button id="stopBtn" class="warn" disabled>Durdur</button>
+    <button id="retryModelBtn" class="ghost" disabled>Yeniden Dene</button>
+    <span id="status">Model: indirilmeyi bekliyor...</span>
+  </div>
+
+  <div class="progressWrap" aria-hidden="false">
+    <div class="progressBar" id="progressBar"><i id="progressFill"></i></div>
+    <div class="progressInfo">
+      <div><span id="percentText">0%</span> • <span id="timeText">—</span></div>
+      <div class="small"><span id="modeText">Mod: bekleme</span></div>
+    </div>
+  </div>
+
+  <div class="metaRow">
+    <div class="pill" id="modelIdPill">Model: <strong id="modelIdText">Helsinki-NLP/opus-mt-en-tr</strong></div>
+    <div class="small">Not: Gerçek byte-level progress CDN / CORS sebebiyle her zaman mümkün olmayabilir. Kodu buna göre yaptıydım.</div>
+  </div>
+
 </div>
 
 <div class="chat" id="chat"></div>
 
 <button id="showLog">LOG AÇ</button>
 <div id="logPanel">
-  <div style="color:#ff0">Canlı log aktif – model yükleme yüzdesi ve hata/olaylar burada gözükecek</div>
+  <div style="color:#ffcc00">Canlı log: indirme durumları, hata ve olaylar burada.</div>
 </div>
 
 <script type="module">
 /*
-  Düzeltilmiş sürüm:
-  - Model yükleme sırasında güvenli bir "yüzde" animasyonu gösterir.
-  - AudioContext / stream yönetimi düzeltildi (AudioContext global, düzgün kapatma).
-  - Echo/feedback azaltmak için sessiz gain node ile bağlandı.
-  - Deepgram çağrısı hata kontrolü geliştirildi.
-  - Genel hata yakalama ve kullanıcıya bilgi verme eklendi.
+  Nihai sürüm - Efe için:
+  - Ayrı "Model İndir" tuşu (downloadModelBtn)
+  - İptal / Retry
+  - pipeline progress_callback varsa kullan; yoksa simülasyon.
+  - Yükleme tamamlandığında %100'e set et.
+  - Başlat butonu yalnızca model yüklendikten sonra aktif.
+  - Gelişmiş log ve durum mesajları.
 */
 
 import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
 
 const DEEPGRAM_KEY = "8b58f8fcf792acd4b0e5d823c3ddf68c8f70af40";
 
+const downloadModelBtn = document.getElementById('downloadModelBtn');
+const cancelDownloadBtn = document.getElementById('cancelDownloadBtn');
+const retryModelBtn = document.getElementById('retryModelBtn');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+
+const statusEl = document.getElementById('status');
+const percentText = document.getElementById('percentText');
+const timeText = document.getElementById('timeText');
+const progressFill = document.getElementById('progressFill');
+const modeText = document.getElementById('modeText');
+const modelIdText = document.getElementById('modelIdText');
+
+const logPanel = document.getElementById('logPanel');
+const showLogBtn = document.getElementById('showLog');
+const chatEl = document.getElementById('chat');
+
 let translator = null;
 let loadingSimInterval = null;
 let simulatedPercent = 0;
-let loadingStartTime = 0;
+let loadingStart = 0;
+let lastProgressTime = 0;
+let lastProgressPercent = 0;
+let cancelRequested = false;
+let downloadAbortController = null;
 
-const logPanel = document.getElementById("logPanel");
-const showLogBtn = document.getElementById("showLog");
-const statusEl = document.getElementById("status");
-const chatEl = document.getElementById("chat");
-
+/* Audio vars */
 let audioStream = null;
 let audioCtx = null;
 let processor = null;
 let gainNode = null;
 
-function log(msg, error = false) {
-  const line = document.createElement("div");
-  const time = new Date().toLocaleTimeString();
-  line.textContent = `${time} → ${msg}`;
-  line.style.color = error ? "#ff6b6b" : "#7efc9b";
+/* Config */
+const MODEL_ID = 'Helsinki-NLP/opus-mt-en-tr'; // değiştirmek istersen burayı değiştir
+
+/* Logging */
+function log(msg, isError = false) {
+  const line = document.createElement('div');
+  line.textContent = `${new Date().toLocaleTimeString()} → ${msg}`;
+  line.style.color = isError ? '#ff6b6b' : '#7efc9b';
   logPanel.appendChild(line);
   logPanel.scrollTop = logPanel.scrollHeight;
-  console.log("[LOG]", msg);
+  console.log('[LOG]', msg);
 }
-
-showLogBtn.addEventListener("click", () => {
-  const isShown = logPanel.classList.toggle("show");
-  showLogBtn.textContent = isShown ? "LOG KAPAT" : "LOG AÇ";
+showLogBtn.addEventListener('click', () => {
+  const s = logPanel.classList.toggle('show');
+  showLogBtn.textContent = s ? 'LOG KAPAT' : 'LOG AÇ';
 });
 
+/* Chat bubbles */
 function addBubble(text, type) {
   if (!text || !text.trim()) return;
-  const div = document.createElement("div");
-  div.className = `bubble ${type}`;
-  div.textContent = text.trim();
-  // yeni mesaj en üste gelsin istiyorsan: insertBefore; yoksa appendChild kullan
-  chatEl.insertBefore(div, chatEl.firstChild);
-  // sayfa kaydırmasını üstte tut
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const d = document.createElement('div');
+  d.className = `bubble ${type}`;
+  d.textContent = text.trim();
+  chatEl.insertBefore(d, chatEl.firstChild);
 }
 
-/* pcm float32 -> wav blob */
+/* UI helpers */
+function setProgress(p, note = '') {
+  p = Math.max(0, Math.min(100, Math.round(p)));
+  percentText.textContent = p + '%';
+  progressFill.style.width = p + '%';
+  if (note) modeText.textContent = note;
+}
+function setStatus(s) { statusEl.textContent = s; }
+
+/* PCM->WAV (aynı fonksiyon) */
 function pcmToWav(samples, sampleRate = 44100) {
   const numChannels = 1;
   const bitsPerSample = 16;
@@ -105,20 +158,16 @@ function pcmToWav(samples, sampleRate = 44100) {
   const dataSize = samples.length * (bitsPerSample / 8);
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
-
   function writeString(offset, str) {
-    for (let i = 0; i < str.length; i++) {
-      view.setUint8(offset + i, str.charCodeAt(i));
-    }
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
   }
-
   let offset = 0;
   writeString(offset, 'RIFF'); offset += 4;
   view.setUint32(offset, 36 + dataSize, true); offset += 4;
   writeString(offset, 'WAVE'); offset += 4;
   writeString(offset, 'fmt '); offset += 4;
-  view.setUint32(offset, 16, true); offset += 4; // Subchunk1Size (16 for PCM)
-  view.setUint16(offset, 1, true); offset += 2; // AudioFormat (1 = PCM)
+  view.setUint32(offset, 16, true); offset += 4;
+  view.setUint16(offset, 1, true); offset += 2;
   view.setUint16(offset, numChannels, true); offset += 2;
   view.setUint32(offset, sampleRate, true); offset += 4;
   view.setUint32(offset, byteRate, true); offset += 4;
@@ -126,150 +175,215 @@ function pcmToWav(samples, sampleRate = 44100) {
   view.setUint16(offset, bitsPerSample, true); offset += 2;
   writeString(offset, 'data'); offset += 4;
   view.setUint32(offset, dataSize, true); offset += 4;
-
-  // PCM samples (16-bit)
   let pos = 44;
   for (let i = 0; i < samples.length; i++, pos += 2) {
-    let s = Math.max(-1, Math.min(1, samples[i]));
+    const s = Math.max(-1, Math.min(1, samples[i]));
     view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
   }
-
   return new Blob([view], { type: 'audio/wav' });
 }
 
-/* Deepgram speech-to-text (recognize) */
+/* Deepgram recognizer */
 async function recognize(blob) {
   const res = await fetch("https://api.deepgram.com/v1/listen?model=nova-2&language=en&punctuate=true", {
     method: "POST",
     headers: { "Authorization": `Token ${DEEPGRAM_KEY}`, "Content-Type": "audio/wav" },
     body: blob
   });
-  if (!res.ok) {
-    const text = await res.text().catch(()=>"");
-    throw new Error(`Deepgram hata: ${res.status} ${res.statusText} ${text}`);
-  }
+  if (!res.ok) throw new Error('Deepgram ' + res.status + ' ' + res.statusText);
   const json = await res.json();
   const alt = json?.results?.channels?.[0]?.alternatives?.[0];
-  return (alt && alt.transcript) ? alt.transcript.trim() : "";
+  return (alt && alt.transcript) ? alt.transcript.trim() : '';
 }
 
-/* Basit çeviri wrapper */
+/* Çeviri wrapper */
 async function translate(text) {
   if (!translator) {
-    // eğer model henüz hazır değilse, açıkça yükle
-    await loadModel();
-    if (!translator) return text + " (çeviri modeli yok)";
+    await loadModelInternal(); // otomatik yükle, ama genelde model zaten indirildi
+    if (!translator) return text + ' (çeviri yok)';
   }
   try {
     const out = await translator(text);
-    // Xenova pipeline dönüş yapısı model/versiyona göre değişebilir
-    // Tipik: [{ translation_text: "..." }]
     if (Array.isArray(out) && out[0]?.translation_text) return out[0].translation_text;
-    // bazen doğrudan string dönebilir:
     if (typeof out === 'string') return out;
-    // diğer durumlarda olabildiğince güvenli dönüş
-    return JSON.stringify(out).slice(0,400);
+    return (out && out.translation_text) || JSON.stringify(out).slice(0,400);
   } catch (e) {
-    log("Çeviri hatası: " + e.message, true);
-    return text + " (çeviri hatası)";
+    log('Çeviri hatası: ' + e.message, true);
+    return text + ' (çeviri hatası)';
   }
 }
 
-/* Model yükleme: bazı CDN implementasyonları progress callback vermeyebilir.
-   Burada güvenli olmak için "simüle edilmiş" ilerleme göstergesi kullanalım.
-*/
-async function loadModel() {
-  if (translator) return translator;
-
-  log("Model indirilmeye başlandı (pipeline çağrısı)...");
-  statusEl.textContent = "Model indiriliyor... %0";
-  simulatedPercent = 0;
-  loadingStartTime = Date.now();
-
-  // Simüle edilmiş artış: her 300ms yüzdeyi artır
-  loadingSimInterval = setInterval(() => {
-    // yavaş yavaş artış, ama %98'e kadar; gerçek bitişte %100'e setlenecek.
-    simulatedPercent = Math.min(98, simulatedPercent + Math.max(1, Math.floor(Math.random()*6)));
-    statusEl.textContent = `Model indiriliyor... %${simulatedPercent}`;
-    log(`Simüle yüzde: ${simulatedPercent}%`);
-  }, 300);
-
-  try {
-    // Burada kullanılan model id'si notebook/CDN'e göre değişebilir.
-    // "Helsinki-NLP/opus-mt-en-tr" evrensel, Xenova CDN de destekliyor olmalı.
-    translator = await pipeline('translation', 'Helsinki-NLP/opus-mt-en-tr');
-    // pipeline başarılıysa hemen %100 yap
-    simulatedPercent = 100;
-    statusEl.textContent = "Hazır – Konuş!";
-    log("%100 → MODEL BAŞARIYLA YÜKLENDİ! Offline çeviri aktif 🔥");
-  } catch (e) {
-    log("Model yükleme HATASI: " + (e?.message || e), true);
-    statusEl.textContent = "Model yüklenemedi – Konsolu kontrol et";
-    translator = null;
-  } finally {
-    if (loadingSimInterval) { clearInterval(loadingSimInterval); loadingSimInterval = null; }
-  }
-  return translator;
-}
-
-/* Gelen ses chunk'ı işleme */
+/* process audio chunk */
 async function processChunk(samples) {
-  statusEl.textContent = "Çevriliyor...";
+  setStatus('Çevriliyor...');
   const blob = pcmToWav(samples);
   try {
     const eng = await recognize(blob);
-    if (!eng || eng.length < 1) {
-      log("Tanıma: kısa veya boş transcript.");
-      statusEl.textContent = "Dinliyor...";
-      return;
-    }
-    log("İNG: " + eng);
-    addBubble(eng, "en");
+    if (!eng) { setStatus('Dinliyor...'); return; }
+    log('İNG: ' + eng);
+    addBubble(eng, 'en');
     const tr = await translate(eng);
-    log("TR: " + tr);
-    addBubble(tr, "tr");
-    statusEl.textContent = "Dinliyor...";
+    log('TR: ' + tr);
+    addBubble(tr, 'tr');
+    setStatus('Dinliyor...');
   } catch (e) {
-    log("Hata: " + (e?.message || e), true);
-    statusEl.textContent = "Hata oluştu";
+    log('Hata: ' + (e?.message || e), true);
+    setStatus('Hata oluştu');
   }
 }
 
-/* GLOBAL değişkenler: audioCtx, vs. — başlat/durdur yönetimi */
-document.getElementById("startBtn").onclick = async () => {
-  document.getElementById("startBtn").disabled = true;
-  document.getElementById("stopBtn").disabled = false;
+/* MODEL YÜKLEME: iki yol
+   1) pipeline(..., {progress_callback}) varsa kullan
+   2) yoksa simüle et; pipeline tamamlandığında %100'e set et.
+*/
+async function loadModelInternal(opts = {}) {
+  if (translator) return translator;
+  cancelRequested = false;
+  downloadAbortController = new AbortController();
+
+  setStatus('Model indiriliyor (başlatıldı)...');
+  setProgress(0,'Mod: indiriliyor');
+  loadingStart = Date.now();
+  lastProgressTime = loadingStart;
+  lastProgressPercent = 0;
+  simulatedPercent = 0;
+
+  // zaman göstergesi güncelle
+  const timerInt = setInterval(() => {
+    if (lastProgressPercent > 0 && lastProgressPercent < 100) {
+      const now = Date.now();
+      const elapsed = (now - loadingStart) / 1000;
+      // basit tahmin: lineer
+      const percent = lastProgressPercent;
+      const speed = percent / elapsed; // %/s
+      const remaining = speed > 0 ? Math.round((100 - percent) / speed) : '—';
+      timeText.textContent = (typeof remaining === 'number') ? `${remaining}s kaldı` : '—';
+    } else if (simulatedPercent > 0 && simulatedPercent < 100) {
+      timeText.textContent = 'tahmini...';
+    }
+  }, 700);
+
+  // simülasyon fallback
+  loadingSimInterval = setInterval(() => {
+    if (simulatedPercent < 98) {
+      simulatedPercent += Math.max(1, Math.floor(Math.random()*6));
+      setProgress(simulatedPercent, 'Mod: simülasyon');
+      lastProgressPercent = simulatedPercent;
+    }
+  }, 350);
 
   try {
-    // modeli önceden yüklemeye başla (arkaplanda)
-    loadModel().catch(e => log("Model preload hatası: " + e, true));
+    // pipeline çağırırken progress_callback verilmeye çalışılıyor
+    const progressEvents = [];
+    translator = await pipeline('translation', MODEL_ID, {
+      progress_callback: (data) => {
+        // Eğer pipeline destekliyorsa buraya data gelir
+        // data.progress beklenen: 0-100
+        const p = Math.round(data.progress || 0);
+        lastProgressPercent = p;
+        lastProgressTime = Date.now();
+        setProgress(p, `Mod: gerçek (stage:${data.status || '??'})`);
+        progressEvents.push(data);
+        log('progress callback: ' + JSON.stringify(data));
+      },
+      signal: downloadAbortController.signal // bazı pipeline'larda işe yarayabilir
+    });
 
+    // iptal edilmişse ardından yapma
+    if (cancelRequested) throw new Error('İndirme iptal edildi.');
+
+    // kesin %100
+    setProgress(100, 'Mod: hazır');
+    timeText.textContent = '0s kaldı';
+    setStatus('Model hazır — çeviri aktif');
+    log('%100 → MODEL BAŞARIYLA YÜKLENDİ!');
+    // buton durumları
+    downloadModelBtn.disabled = true;
+    cancelDownloadBtn.disabled = true;
+    retryModelBtn.disabled = false;
+    startBtn.disabled = false;
+    return translator;
+  } catch (e) {
+    // iptal kontrolü
+    if (cancelRequested) {
+      setStatus('İndirme iptal edildi');
+      setProgress(0, 'Mod: iptal');
+      log('Model indirme iptal edildi.', false);
+    } else {
+      setStatus('Model yükleme HATASI');
+      setProgress(0,'Mod: hata');
+      log('Model yükleme HATASI: ' + (e?.message || e), true);
+    }
+    translator = null;
+    downloadModelBtn.disabled = false;
+    cancelDownloadBtn.disabled = true;
+    retryModelBtn.disabled = false;
+    startBtn.disabled = true;
+    return null;
+  } finally {
+    if (loadingSimInterval) { clearInterval(loadingSimInterval); loadingSimInterval = null; }
+    clearInterval(timerInt);
+  }
+}
+
+/* Düğmeler */
+downloadModelBtn.addEventListener('click', async () => {
+  downloadModelBtn.disabled = true;
+  cancelDownloadBtn.disabled = false;
+  retryModelBtn.disabled = true;
+  setStatus('Model indiriliyor (Başlatıldı)...');
+  modeText.textContent = 'Mod: başlatıldı';
+  await loadModelInternal();
+});
+
+cancelDownloadBtn.addEventListener('click', () => {
+  cancelRequested = true;
+  // AbortController varsa abort et
+  try {
+    if (downloadAbortController) downloadAbortController.abort();
+  } catch(e){}
+  cancelDownloadBtn.disabled = true;
+  downloadModelBtn.disabled = false;
+  retryModelBtn.disabled = false;
+  setStatus('İptal isteği gönderildi...');
+  log('Kullanıcı indirme iptal etti.');
+});
+
+retryModelBtn.addEventListener('click', async () => {
+  retryModelBtn.disabled = true;
+  downloadModelBtn.disabled = true;
+  cancelDownloadBtn.disabled = false;
+  setStatus('Yeniden deneme...');
+  await loadModelInternal();
+});
+
+/* START / STOP (ses) */
+startBtn.addEventListener('click', async () => {
+  startBtn.disabled = true;
+  stopBtn.disabled = false;
+  setStatus('Mikrofon açılıyor...');
+  try {
+    // Model yoksa yükle (auto)
+    if (!translator) {
+      setStatus('Model hazır değil, indiriliyor otomatik...');
+      await loadModelInternal();
+    }
+    // mikrofon
     audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    log("Mikrofon açıldı");
-
     audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const source = audioCtx.createMediaStreamSource(audioStream);
-
-    // ScriptProcessor deprecated ama basitçe çalışır; boyutu 4096 OK
     processor = audioCtx.createScriptProcessor(4096, 1, 1);
-
-    // Gain node ile processor->destination bağlantısı yap (gain=0) -> echo önleme
     gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0;
+    gainNode.gain.value = 0; // echo önleme
 
-    // buffer to accumulate samples
-    const bufferSamples = [];
-    const chunkSize = audioCtx.sampleRate * 2; // 2 saniye chunk
+    const buffer = [];
+    const chunkSize = audioCtx.sampleRate * 2; // 2s chunk
 
     processor.onaudioprocess = (e) => {
       const ch = e.inputBuffer.getChannelData(0);
-      // kopyala (Float32Array -> normal array push)
-      for (let i = 0; i < ch.length; i++) bufferSamples.push(ch[i]);
-
-      // eğer tam chunk dolduysa işle
-      if (bufferSamples.length >= chunkSize) {
-        const chunk = bufferSamples.splice(0, chunkSize);
-        // processChunk'i yormamak için microtask'lere bırak
+      for (let i = 0; i < ch.length; i++) buffer.push(ch[i]);
+      if (buffer.length >= chunkSize) {
+        const chunk = buffer.splice(0, chunkSize);
         processChunk(chunk);
       }
     };
@@ -278,43 +392,45 @@ document.getElementById("startBtn").onclick = async () => {
     processor.connect(gainNode);
     gainNode.connect(audioCtx.destination);
 
-    log("Canlı çeviri başladı – model yükleme yüzdesi takip ediliyor");
-    statusEl.textContent = "Hazır değilse model indiriliyor...";
+    setStatus('Dinliyor...');
+    log('Canlı çeviri başladı.');
   } catch (e) {
-    log("Mikrofon hatası: " + (e?.message || e), true);
-    alert("Mikrofon izni ver veya tarayıcı izinlerini kontrol et!");
-    document.getElementById("startBtn").disabled = false;
-    document.getElementById("stopBtn").disabled = true;
+    log('Mikrofon hatası: ' + (e?.message || e), true);
+    alert('Mikrofon izni ver veya tarayıcı izinlerini kontrol et!');
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus('Mikrofon açma hatası');
   }
-};
+});
 
-document.getElementById("stopBtn").onclick = async () => {
+stopBtn.addEventListener('click', async () => {
   try {
-    if (processor) {
-      processor.disconnect();
-      processor.onaudioprocess = null;
-      processor = null;
-    }
-    if (gainNode) {
-      try { gainNode.disconnect(); } catch(_) {}
-      gainNode = null;
-    }
-    if (audioCtx) {
-      try { await audioCtx.close(); } catch(_) {}
-      audioCtx = null;
-    }
-    if (audioStream) {
-      audioStream.getTracks().forEach(t => t.stop());
-      audioStream = null;
-    }
-    document.getElementById("startBtn").disabled = false;
-    document.getElementById("stopBtn").disabled = true;
-    statusEl.textContent = "Durduruldu";
-    log("Durduruldu");
+    if (processor) { processor.disconnect(); processor.onaudioprocess = null; processor = null; }
+    if (gainNode) { try{ gainNode.disconnect(); }catch{} gainNode = null; }
+    if (audioCtx) { try{ await audioCtx.close(); }catch{} audioCtx = null; }
+    if (audioStream) { audioStream.getTracks().forEach(t => t.stop()); audioStream = null; }
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    setStatus('Durduruldu');
+    log('Canlı çeviri durduruldu.');
   } catch (e) {
-    log("Durdurma hatası: " + (e?.message || e), true);
+    log('Durdurma hatası: ' + (e?.message || e), true);
   }
-};
+});
+
+/* Başlangıç durumları */
+setProgress(0, 'Mod: bekleme');
+setStatus('Model: indirilmeyi bekliyor...');
+downloadModelBtn.disabled = false;
+cancelDownloadBtn.disabled = true;
+retryModelBtn.disabled = true;
+startBtn.disabled = true;
+stopBtn.disabled = true;
+
+/* Eğer istersen sayfa yüklenince otomatik model indirme başlatılabilir:
+window.addEventListener('load', ()=> { downloadModelBtn.click(); });
+*/
+
 </script>
 </body>
 </html>
