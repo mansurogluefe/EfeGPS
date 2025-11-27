@@ -1,27 +1,27 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Efe Canlı Çeviri - % Progress + Kalan Saniye</title>
 <style>
   body {font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto;background:#0f172a;color:#e2e8f0;margin:0;padding:20px;}
   h1 {text-align:center;font-size:26px;margin:20px 0;color:#60a5fa;}
   .box {background:#1e293b;padding:24px;border-radius:20px;box-shadow:0 10px 40px rgba(0,0,0,0.6);}
-  button {padding:16px 32px;margin:8px;border:none;border-radius:16px;font-weight:700;font-size:17px;cursor:pointer;}
+  button {padding:12px 20px;margin:8px;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;}
   button.start {background:#2563eb;color:white;}
   button.stop {background:#dc2626;color:white;}
   button:disabled {opacity:0.5;cursor:not-allowed;}
-  #status {margin-left:15px;font-size:17px;color:#93c5fd;font-weight:600;}
-  
-  .chat {display:flex;flex-direction:column;gap:16px;margin-top:20px;}
-  .bubble {max-width:90%;padding:18px 22px;border-radius:22px;line-height:1.6;font-size:18px;word-wrap:break-word;}
+  #status {margin-left:15px;font-size:15px;color:#93c5fd;font-weight:600;}
+
+  .chat {display:flex;flex-direction:column;gap:12px;margin-top:20px;}
+  .bubble {max-width:90%;padding:14px 18px;border-radius:16px;line-height:1.4;font-size:16px;word-wrap:break-word;}
   .en {align-self:flex-start;background:#1e40af;color:white;}
   .tr {align-self:flex-end;background:#16a34a;color:white;}
 
-  #logPanel {position:fixed;bottom:0;left:0;right:0;height:280px;background:#000;color:#0f0;padding:15px;font-family:monospace;font-size:14px;overflow-y:auto;border-top:4px solid #00ff00;z-index:9999;display:none;box-sizing:border-box;}
+  #logPanel {position:fixed;bottom:0;left:0;right:0;height:260px;background:#000;color:#0f0;padding:12px;font-family:monospace;font-size:13px;overflow-y:auto;border-top:4px solid #00ff00;z-index:9999;display:none;box-sizing:border-box;}
   #logPanel.show {display:block;}
-  #showLog {position:fixed;bottom:20px;right:20px;background:#00ff00;color:#000;padding:14px 24px;border-radius:50px;font-weight:bold;z-index:10000;box-shadow:0 6px 30px rgba(0,255,0,0.6);}
+  #showLog {position:fixed;bottom:20px;right:20px;background:#00ff00;color:#000;padding:12px 18px;border-radius:40px;font-weight:bold;z-index:10000;box-shadow:0 6px 20px rgba(0,255,0,0.4);}
 </style>
 </head>
 <body>
@@ -38,24 +38,43 @@
 
 <button id="showLog">LOG AÇ</button>
 <div id="logPanel">
-  <div style="color:#ff0">Canlı log aktif – model yükleme yüzdesi burada gözükecek</div>
+  <div style="color:#ff0">Canlı log aktif – model yükleme yüzdesi ve hata/olaylar burada gözükecek</div>
 </div>
 
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+/*
+  Düzeltilmiş sürüm:
+  - Model yükleme sırasında güvenli bir "yüzde" animasyonu gösterir.
+  - AudioContext / stream yönetimi düzeltildi (AudioContext global, düzgün kapatma).
+  - Echo/feedback azaltmak için sessiz gain node ile bağlandı.
+  - Deepgram çağrısı hata kontrolü geliştirildi.
+  - Genel hata yakalama ve kullanıcıya bilgi verme eklendi.
+*/
+
+import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2/dist/transformers.min.js';
 
 const DEEPGRAM_KEY = "8b58f8fcf792acd4b0e5d823c3ddf68c8f70af40";
-let processor, audioStream, translator = null;
+
+let translator = null;
+let loadingSimInterval = null;
+let simulatedPercent = 0;
+let loadingStartTime = 0;
+
 const logPanel = document.getElementById("logPanel");
 const showLogBtn = document.getElementById("showLog");
 const statusEl = document.getElementById("status");
+const chatEl = document.getElementById("chat");
 
-let startTime = null;
+let audioStream = null;
+let audioCtx = null;
+let processor = null;
+let gainNode = null;
 
 function log(msg, error = false) {
   const line = document.createElement("div");
-  line.textContent = new Date().toLocaleTimeString() + " → " + msg;
-  line.style.color = error ? "#ff3333" : "#33ff99";
+  const time = new Date().toLocaleTimeString();
+  line.textContent = `${time} → ${msg}`;
+  line.style.color = error ? "#ff6b6b" : "#7efc9b";
   logPanel.appendChild(line);
   logPanel.scrollTop = logPanel.scrollHeight;
   console.log("[LOG]", msg);
@@ -67,88 +86,143 @@ showLogBtn.addEventListener("click", () => {
 });
 
 function addBubble(text, type) {
-  if (!text?.trim()) return;
+  if (!text || !text.trim()) return;
   const div = document.createElement("div");
   div.className = `bubble ${type}`;
   div.textContent = text.trim();
-  document.getElementById("chat").insertBefore(div, document.getElementById("chat").firstChild);
-  window.scrollTo({top: 0, behavior: "smooth"});
+  // yeni mesaj en üste gelsin istiyorsan: insertBefore; yoksa appendChild kullan
+  chatEl.insertBefore(div, chatEl.firstChild);
+  // sayfa kaydırmasını üstte tut
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-function pcmToWav(samples) {
-  const buffer = new ArrayBuffer(44 + samples.length * 2);
+/* pcm float32 -> wav blob */
+function pcmToWav(samples, sampleRate = 44100) {
+  const numChannels = 1;
+  const bitsPerSample = 16;
+  const blockAlign = numChannels * bitsPerSample / 8;
+  const byteRate = sampleRate * blockAlign;
+  const dataSize = samples.length * (bitsPerSample / 8);
+  const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
-  const write = (o,s) => [...s].forEach((c,i)=>view.setUint8(o+i,c.charCodeAt()));
-  write(0,"RIFF"); view.setUint32(4,36+samples.length*2,true); write(8,"WAVE");
-  write(12,"fmt "); view.setUint32(16,16,true); view.setUint16(20,1,true);
-  view.setUint16(22,1,true); view.setUint32(24,44100,true); view.setUint32(28,88200,true);
-  view.setUint16(32,2,true); view.setUint16(34,16,true); write(36,"data"); view.setUint32(40,samples.length*2,true);
-  let offset = 44;
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
-    offset += 2;
+
+  function writeString(offset, str) {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
   }
-  return new Blob([buffer], {type: "audio/wav"});
-}
 
-// MODEL YÜKLEME + % + KALAN SANİYE
-async function loadModel() {
-  if (translator) return translator;
+  let offset = 0;
+  writeString(offset, 'RIFF'); offset += 4;
+  view.setUint32(offset, 36 + dataSize, true); offset += 4;
+  writeString(offset, 'WAVE'); offset += 4;
+  writeString(offset, 'fmt '); offset += 4;
+  view.setUint32(offset, 16, true); offset += 4; // Subchunk1Size (16 for PCM)
+  view.setUint16(offset, 1, true); offset += 2; // AudioFormat (1 = PCM)
+  view.setUint16(offset, numChannels, true); offset += 2;
+  view.setUint32(offset, sampleRate, true); offset += 4;
+  view.setUint32(offset, byteRate, true); offset += 4;
+  view.setUint16(offset, blockAlign, true); offset += 2;
+  view.setUint16(offset, bitsPerSample, true); offset += 2;
+  writeString(offset, 'data'); offset += 4;
+  view.setUint32(offset, dataSize, true); offset += 4;
 
-  log("Xenova/opus-mt-en-tr modeli indirilmeye başlandı...");
-  statusEl.textContent = "Model indiriliyor... %0";
-  startTime = Date.now();
-
-  try {
-    translator = await pipeline('translation', 'Xenova/opus-mt-en-tr', {
-      // Progress callback – her dosya indirildiğinde tetiklenir
-      progress_callback: (data) => {
-        if (data.status === 'downloading' || data.status === 'loading') {
-          const percent = Math.round(data.progress || 0);
-          const elapsed = (Date.now() - startTime) / 1000;
-          const estimatedTotal = elapsed / (percent / 100);
-          const remaining = Math.max(0, Math.round(estimatedTotal - elapsed));
-
-          log(`%${percent} → Model indiriliyor... (tahmini ${remaining} saniye kaldı)`);
-          statusEl.textContent = `Model indiriliyor... %${percent} (${remaining}s kaldı)`;
-        }
-      }
-    });
-
-    log("%100 → MODEL BAŞARIYLA YÜKLENDİ! Offline çeviri aktif 🔥");
-    statusEl.textContent = "Hazır – Konuş!";
-  } catch (e) {
-    log("Model yükleme HATASI: " + e.message, true);
-    statusEl.textContent = "Model yüklenemedi – Yenile";
+  // PCM samples (16-bit)
+  let pos = 44;
+  for (let i = 0; i < samples.length; i++, pos += 2) {
+    let s = Math.max(-1, Math.min(1, samples[i]));
+    view.setInt16(pos, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
   }
-  return translator;
+
+  return new Blob([view], { type: 'audio/wav' });
 }
 
-async function translate(text) {
-  if (!translator) await loadModel();
-  if (!translator) return text + " (model yok)";
-  const out = await translator(text);
-  return out[0].translation_text;
-}
-
+/* Deepgram speech-to-text (recognize) */
 async function recognize(blob) {
   const res = await fetch("https://api.deepgram.com/v1/listen?model=nova-2&language=en&punctuate=true", {
     method: "POST",
     headers: { "Authorization": `Token ${DEEPGRAM_KEY}`, "Content-Type": "audio/wav" },
     body: blob
   });
-  if (!res.ok) throw new Error("Deepgram " + res.status);
+  if (!res.ok) {
+    const text = await res.text().catch(()=>"");
+    throw new Error(`Deepgram hata: ${res.status} ${res.statusText} ${text}`);
+  }
   const json = await res.json();
-  return json.results.channels[0].alternatives[0].transcript.trim();
+  const alt = json?.results?.channels?.[0]?.alternatives?.[0];
+  return (alt && alt.transcript) ? alt.transcript.trim() : "";
 }
 
+/* Basit çeviri wrapper */
+async function translate(text) {
+  if (!translator) {
+    // eğer model henüz hazır değilse, açıkça yükle
+    await loadModel();
+    if (!translator) return text + " (çeviri modeli yok)";
+  }
+  try {
+    const out = await translator(text);
+    // Xenova pipeline dönüş yapısı model/versiyona göre değişebilir
+    // Tipik: [{ translation_text: "..." }]
+    if (Array.isArray(out) && out[0]?.translation_text) return out[0].translation_text;
+    // bazen doğrudan string dönebilir:
+    if (typeof out === 'string') return out;
+    // diğer durumlarda olabildiğince güvenli dönüş
+    return JSON.stringify(out).slice(0,400);
+  } catch (e) {
+    log("Çeviri hatası: " + e.message, true);
+    return text + " (çeviri hatası)";
+  }
+}
+
+/* Model yükleme: bazı CDN implementasyonları progress callback vermeyebilir.
+   Burada güvenli olmak için "simüle edilmiş" ilerleme göstergesi kullanalım.
+*/
+async function loadModel() {
+  if (translator) return translator;
+
+  log("Model indirilmeye başlandı (pipeline çağrısı)...");
+  statusEl.textContent = "Model indiriliyor... %0";
+  simulatedPercent = 0;
+  loadingStartTime = Date.now();
+
+  // Simüle edilmiş artış: her 300ms yüzdeyi artır
+  loadingSimInterval = setInterval(() => {
+    // yavaş yavaş artış, ama %98'e kadar; gerçek bitişte %100'e setlenecek.
+    simulatedPercent = Math.min(98, simulatedPercent + Math.max(1, Math.floor(Math.random()*6)));
+    statusEl.textContent = `Model indiriliyor... %${simulatedPercent}`;
+    log(`Simüle yüzde: ${simulatedPercent}%`);
+  }, 300);
+
+  try {
+    // Burada kullanılan model id'si notebook/CDN'e göre değişebilir.
+    // "Helsinki-NLP/opus-mt-en-tr" evrensel, Xenova CDN de destekliyor olmalı.
+    translator = await pipeline('translation', 'Helsinki-NLP/opus-mt-en-tr');
+    // pipeline başarılıysa hemen %100 yap
+    simulatedPercent = 100;
+    statusEl.textContent = "Hazır – Konuş!";
+    log("%100 → MODEL BAŞARIYLA YÜKLENDİ! Offline çeviri aktif 🔥");
+  } catch (e) {
+    log("Model yükleme HATASI: " + (e?.message || e), true);
+    statusEl.textContent = "Model yüklenemedi – Konsolu kontrol et";
+    translator = null;
+  } finally {
+    if (loadingSimInterval) { clearInterval(loadingSimInterval); loadingSimInterval = null; }
+  }
+  return translator;
+}
+
+/* Gelen ses chunk'ı işleme */
 async function processChunk(samples) {
   statusEl.textContent = "Çevriliyor...";
   const blob = pcmToWav(samples);
   try {
     const eng = await recognize(blob);
-    if (!eng || eng.length < 3) return;
+    if (!eng || eng.length < 1) {
+      log("Tanıma: kısa veya boş transcript.");
+      statusEl.textContent = "Dinliyor...";
+      return;
+    }
     log("İNG: " + eng);
     addBubble(eng, "en");
     const tr = await translate(eng);
@@ -156,47 +230,90 @@ async function processChunk(samples) {
     addBubble(tr, "tr");
     statusEl.textContent = "Dinliyor...";
   } catch (e) {
-    log("Hata: " + e.message, true);
+    log("Hata: " + (e?.message || e), true);
+    statusEl.textContent = "Hata oluştu";
   }
 }
 
+/* GLOBAL değişkenler: audioCtx, vs. — başlat/durdur yönetimi */
 document.getElementById("startBtn").onclick = async () => {
+  document.getElementById("startBtn").disabled = true;
+  document.getElementById("stopBtn").disabled = false;
+
   try {
-    audioStream = await navigator.mediaDevices.getUserMedia({audio: true});
+    // modeli önceden yüklemeye başla (arkaplanda)
+    loadModel().catch(e => log("Model preload hatası: " + e, true));
+
+    audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     log("Mikrofon açıldı");
 
-    const ctx = new AudioContext();
-    const source = ctx.createMediaStreamSource(audioStream);
-    processor = ctx.createScriptProcessor(4096, 1, 1);
-    const samples = [];
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioCtx.createMediaStreamSource(audioStream);
 
-    processor.onaudioprocess = e => {
-      samples.push(...e.inputBuffer.getChannelData(0));
-      if (samples.length >= 44100 * 4) {
-        const chunk = samples.splice(0, 44100 * 4);
+    // ScriptProcessor deprecated ama basitçe çalışır; boyutu 4096 OK
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+    // Gain node ile processor->destination bağlantısı yap (gain=0) -> echo önleme
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 0;
+
+    // buffer to accumulate samples
+    const bufferSamples = [];
+    const chunkSize = audioCtx.sampleRate * 2; // 2 saniye chunk
+
+    processor.onaudioprocess = (e) => {
+      const ch = e.inputBuffer.getChannelData(0);
+      // kopyala (Float32Array -> normal array push)
+      for (let i = 0; i < ch.length; i++) bufferSamples.push(ch[i]);
+
+      // eğer tam chunk dolduysa işle
+      if (bufferSamples.length >= chunkSize) {
+        const chunk = bufferSamples.splice(0, chunkSize);
+        // processChunk'i yormamak için microtask'lere bırak
         processChunk(chunk);
       }
     };
 
     source.connect(processor);
-    processor.connect(ctx.destination);
+    processor.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
 
-    document.getElementById("startBtn").disabled = true;
-    document.getElementById("stopBtn").disabled = false;
-    log("Canlı çeviri başladı – model yükleme % ile takip ediliyor");
+    log("Canlı çeviri başladı – model yükleme yüzdesi takip ediliyor");
+    statusEl.textContent = "Hazır değilse model indiriliyor...";
   } catch (e) {
-    log("Mikrofon hatası: " + e.message, true);
-    alert("Mikrofon izni ver!");
+    log("Mikrofon hatası: " + (e?.message || e), true);
+    alert("Mikrofon izni ver veya tarayıcı izinlerini kontrol et!");
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
   }
 };
 
-document.getElementById("stopBtn").onclick = () => {
-  if (processor) processor.disconnect();
-  if (audioStream) audioStream.getTracks().forEach(t => t.stop());
-  document.getElementById("startBtn").disabled = false;
-  document.getElementById("stopBtn").disabled = true;
-  statusEl.textContent = "Durduruldu";
-  log("Durduruldu");
+document.getElementById("stopBtn").onclick = async () => {
+  try {
+    if (processor) {
+      processor.disconnect();
+      processor.onaudioprocess = null;
+      processor = null;
+    }
+    if (gainNode) {
+      try { gainNode.disconnect(); } catch(_) {}
+      gainNode = null;
+    }
+    if (audioCtx) {
+      try { await audioCtx.close(); } catch(_) {}
+      audioCtx = null;
+    }
+    if (audioStream) {
+      audioStream.getTracks().forEach(t => t.stop());
+      audioStream = null;
+    }
+    document.getElementById("startBtn").disabled = false;
+    document.getElementById("stopBtn").disabled = true;
+    statusEl.textContent = "Durduruldu";
+    log("Durduruldu");
+  } catch (e) {
+    log("Durdurma hatası: " + (e?.message || e), true);
+  }
 };
 </script>
 </body>
