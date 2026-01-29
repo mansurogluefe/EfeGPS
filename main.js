@@ -301,64 +301,50 @@ function loadFilteredRoute(dateStr, startTime, endTime) {
     });
 }
 
-// Ana rota yükleme fonksiyonu
 function loadRoute(dateStr) {
-    console.log('Rota yükleniyor:', dateStr);
-    showLoading(`${dateStr} tarihine ait veriler yükleniyor...`);
+    // dateStr formatını API'ye uygun hale getir (Örn: 2026-01-29 -> 29_01)
+    const formattedDate = dateStr.split('-').reverse().slice(0, 2).join('_');
+    
+    console.log('API üzerinden rota yükleniyor:', formattedDate);
+    showLoading(`${dateStr} verileri çekiliyor...`);
 
-    // Önceki katmanları temizle
     clearMapLayers();
-
-    // DOM'u sıfırla
     resetDisplay();
 
-    if (!dateStr) {
-        hideLoading();
-        showToast('Geçersiz tarih!', 'error');
-        return;
-    }
-
-    database.ref(`konum_kayitlari/${dateStr}`).once('value')
-    .then(snapshot => {
-        const data = snapshot.val();
-        if (!data) {
+    fetch(`${API_BASE_URL}/get_route/${formattedDate}`)
+    .then(response => response.json())
+    .then(data => {
+        if (!data || data.error) {
             hideLoading();
-            showToast(`${dateStr} tarihine ait veri bulunamadı`, 'warning');
+            showToast(`Veri bulunamadı veya hata oluştu`, 'warning');
             return;
         }
 
         let points = Object.values(data)
-            .sort((a, b) => a.timestamp - b.timestamp)
             .map(p => ({
                 lat: p.latitude,
                 lng: p.longitude,
                 speed: isNaN(p.speed) ? 0 : p.speed,
-                altitude: p.altitude || 0,
                 timestamp: p.timestamp,
                 time: new Date(p.timestamp)
             }));
 
-        console.log(`${points.length} nokta yüklendi`);
-
         if (points.length < 2) {
             hideLoading();
-            showToast('Yeterli kayıt bulunamadı', 'warning');
+            showToast('Yeterli kayıt yok', 'warning');
             return;
         }
 
-        // Haritayı güncelle
         updateMapWithPoints(points);
         hideLoading();
-        showToast(`${points.length} nokta başarıyla yüklendi`, 'success');
-
+        showToast(`Sistemden ${points.length} nokta yüklendi`, 'success');
     })
     .catch(error => {
-        console.error('Veri yükleme hatası:', error);
+        console.error('API Hatası:', error);
         hideLoading();
-        showToast('Veri yüklenirken hata oluştu: ' + error.message, 'error');
+        showToast('Termux API bağlantısı kurulamadı!', 'error');
     });
 }
-
 // Hız limitine göre renkli rota çizimi
 function createSpeedGradientRoute(points) {
     // Önceki hız katmanlarını temizle
