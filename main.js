@@ -1,13 +1,16 @@
 // Firebase ayarları
+// Firebase ayarları - Bunların LocationService.kt içindekiyle aynı olduğundan emin ol
 const firebaseConfig = {
     apiKey: "AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfc-88",
-    authDomain: "efegps-0505.firebaseapp.com",
-    databaseURL: "https://efegps-0505-default-rtdb.firebaseio.com",
-    projectId: "efegps-0505",
-    storageBucket: "efegps-0505.appspot.com",
+    authDomain: "efegps-f38f0.firebaseapp.com",
+    databaseURL: "https://efegps-f38f0-default-rtdb.firebaseio.com",
+    projectId: "efegps-f38f0",
+    storageBucket: "efegps-f38f0.appspot.com",
     messagingSenderId: "266569948357",
     appId: "1:266569948357:web:f8b3f64ecfecbdabfe64ac"
 };
+
+const BOT_TOKEN = "7739075002:AAEpEvduB6kSgdjtb9LogBdHIVBVFRDherw"; // Bridge için gerekli
 
 // DOM elementleri - NULL kontrolü ile
 function getElement(id) {
@@ -37,7 +40,7 @@ let speedGradientLayers = [];
 let currentPoints = [];
 
 // Sayfa yüklendiğinde
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     console.log('DOM yüklendi, init işlemleri başlıyor...');
     initializeApp();
 });
@@ -107,7 +110,7 @@ function setupEventListeners() {
     // Tarih değişikliği
     const datePicker = getElement('datePicker');
     if (datePicker) {
-        datePicker.addEventListener('change', function() {
+        datePicker.addEventListener('change', function () {
             const selectedDate = this.value;
             if (selectedDate) {
                 loadRoute(selectedDate);
@@ -118,7 +121,7 @@ function setupEventListeners() {
     // Filtre uygula butonu
     const applyFiltersBtn = getElement('apply-filters');
     if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', function() {
+        applyFiltersBtn.addEventListener('click', function () {
             applyDateTimeFilter();
         });
     }
@@ -151,7 +154,7 @@ function setupEventListeners() {
 function setupSpeedLimitSlider() {
     const speedSlider = getElement('speedLimitSlider');
     if (speedSlider) {
-        speedSlider.addEventListener('input', function() {
+        speedSlider.addEventListener('input', function () {
             const speedValue = getElement('speedLimitValue');
             if (speedValue) {
                 speedValue.textContent = this.value + ' km/s';
@@ -167,7 +170,7 @@ function setupSpeedLimitSlider() {
 // Hızlı tarih seçici
 function setupQuickDateSelector() {
     document.querySelectorAll('.date-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             // Tüm butonlardan active classını kaldır
             document.querySelectorAll('.date-btn').forEach(b => {
                 b.classList.remove('active');
@@ -193,7 +196,7 @@ function setupQuickDateSelector() {
 // Tab navigasyonu
 function setupTabNavigation() {
     document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
+        btn.addEventListener('click', function () {
             const tabName = this.dataset.tab;
             switchTab(tabName);
         });
@@ -251,98 +254,84 @@ function loadFilteredRoute(dateStr, startTime, endTime) {
     console.log('Filtreli rota yükleniyor:', dateStr, startTime, endTime);
 
     database.ref(`konum_kayitlari/${dateStr}`).once('value')
-    .then(snapshot => {
-        const data = snapshot.val();
-        if (!data) {
+        .then(snapshot => {
+            const data = snapshot.val();
+            if (!data) {
+                hideLoading();
+                showToast(`${dateStr} tarihine ait veri bulunamadı`, 'warning');
+                return;
+            }
+
+            let points = Object.values(data)
+                .sort((a, b) => a.timestamp - b.timestamp)
+                .map(p => ({
+                    lat: p.latitude,
+                    lng: p.longitude,
+                    speed: isNaN(p.speed) ? 0 : p.speed,
+                    altitude: p.altitude || 0,
+                    timestamp: p.timestamp,
+                    time: new Date(p.timestamp)
+                }));
+
+            // Zaman filtrelemesi uygula
+            if (startTime && endTime) {
+                const startDateTime = new Date(`${dateStr}T${startTime}`).getTime();
+                const endDateTime = new Date(`${dateStr}T${endTime}`).getTime();
+
+                points = points.filter(p => {
+                    return p.timestamp >= startDateTime && p.timestamp <= endDateTime;
+                });
+
+                console.log(`Zaman filtresi uygulandı: ${points.length} nokta kaldı`);
+            }
+
+            if (points.length < 2) {
+                hideLoading();
+                showToast('Filtreleme sonucu yeterli veri bulunamadı', 'warning');
+                return;
+            }
+
+            // Haritayı güncelle
+            updateMapWithPoints(points);
             hideLoading();
-            showToast(`${dateStr} tarihine ait veri bulunamadı`, 'warning');
-            return;
-        }
+            showToast('Filtreleme uygulandı', 'success');
 
-        let points = Object.values(data)
-            .sort((a, b) => a.timestamp - b.timestamp)
-            .map(p => ({
-                lat: p.latitude,
-                lng: p.longitude,
-                speed: isNaN(p.speed) ? 0 : p.speed,
-                altitude: p.altitude || 0,
-                timestamp: p.timestamp,
-                time: new Date(p.timestamp)
-            }));
-
-        // Zaman filtrelemesi uygula
-        if (startTime && endTime) {
-            const startDateTime = new Date(`${dateStr}T${startTime}`).getTime();
-            const endDateTime = new Date(`${dateStr}T${endTime}`).getTime();
-
-            points = points.filter(p => {
-                return p.timestamp >= startDateTime && p.timestamp <= endDateTime;
-            });
-
-            console.log(`Zaman filtresi uygulandı: ${points.length} nokta kaldı`);
-        }
-
-        if (points.length < 2) {
+        })
+        .catch(error => {
+            console.error('Filtreli veri yükleme hatası:', error);
             hideLoading();
-            showToast('Filtreleme sonucu yeterli veri bulunamadı', 'warning');
-            return;
-        }
-
-        // Haritayı güncelle
-        updateMapWithPoints(points);
-        hideLoading();
-        showToast('Filtreleme uygulandı', 'success');
-
-    })
-    .catch(error => {
-        console.error('Filtreli veri yükleme hatası:', error);
-        hideLoading();
-        showToast('Veri yüklenirken hata oluştu', 'error');
-    });
+            showToast('Veri yüklenirken hata oluştu', 'error');
+        });
 }
 
 function loadRoute(dateStr) {
-    // dateStr formatını API'ye uygun hale getir (Örn: 2026-01-29 -> 29_01)
-    const formattedDate = dateStr.split('-').reverse().slice(0, 2).join('_');
-    
-    console.log('API üzerinden rota yükleniyor:', formattedDate);
-    showLoading(`${dateStr} verileri çekiliyor...`);
+    console.log('Bridge üzerinden rota yükleniyor:', dateStr);
+    showLoading(`Cihazdan veriler talep ediliyor...`);
 
     clearMapLayers();
     resetDisplay();
 
-    fetch(`${API_BASE_URL}/get_route/${formattedDate}`)
-    .then(response => response.json())
-    .then(data => {
-        if (!data || data.error) {
-            hideLoading();
-            showToast(`Veri bulunamadı veya hata oluştu`, 'warning');
-            return;
-        }
+    // 1. Telefona "Dosyayı Telegram'a yükle" emri gönder
+    database.ref('log_isteği').set(true);
 
-        let points = Object.values(data)
-            .map(p => ({
-                lat: p.latitude,
-                lng: p.longitude,
-                speed: isNaN(p.speed) ? 0 : p.speed,
-                timestamp: p.timestamp,
-                time: new Date(p.timestamp)
-            }));
+    // 2. Telefonun yükleyeceği file_id'yi Firebase'den beklemeye başla
+    const logRef = database.ref('motor_durumu/last_log_file_id');
 
-        if (points.length < 2) {
-            hideLoading();
-            showToast('Yeterli kayıt yok', 'warning');
-            return;
-        }
-
-        updateMapWithPoints(points);
+    // 30 saniye içinde cevap gelmezse (cihaz çevrimdışıysa) durdur
+    const timeout = setTimeout(() => {
+        logRef.off();
         hideLoading();
-        showToast(`Sistemden ${points.length} nokta yüklendi`, 'success');
-    })
-    .catch(error => {
-        console.error('API Hatası:', error);
-        hideLoading();
-        showToast('Termux API bağlantısı kurulamadı!', 'error');
+        showToast('Cihaz yanıt vermedi. İnternet bağlantısını kontrol edin.', 'error');
+    }, 30000);
+
+    logRef.on('value', (snapshot) => {
+        const fileId = snapshot.val();
+        if (fileId) {
+            clearTimeout(timeout);
+            logRef.off(); // Dinlemeyi kapat
+            showLoading('Dosya Telegram\'dan çekiliyor...');
+            fetchLogFromTelegram(fileId, dateStr);
+        }
     });
 }
 // Hız limitine göre renkli rota çizimi
@@ -363,7 +352,7 @@ function createSpeedGradientRoute(points) {
 
     // Segmentleri çiz
     for (let i = 1; i < points.length; i++) {
-        const prevPoint = points[i-1];
+        const prevPoint = points[i - 1];
         const currentPoint = points[i];
         const avgSpeed = (prevPoint.speed + currentPoint.speed) / 2;
 
@@ -627,19 +616,19 @@ function calculateAndDisplayStats(points) {
 
     for (let i = 1; i < points.length; i++) {
         const dist = map.distance(
-            [points[i-1].lat, points[i-1].lng],
+            [points[i - 1].lat, points[i - 1].lng],
             [points[i].lat, points[i].lng]
         );
         totalDistance += dist;
 
         if (points[i].speed > 1) {
-            totalDriveTime += points[i].timestamp - points[i-1].timestamp;
+            totalDriveTime += points[i].timestamp - points[i - 1].timestamp;
         }
 
         maxSpeed = Math.max(maxSpeed, points[i].speed);
     }
 
-    const totalTime = points.length > 1 ? points[points.length-1].timestamp - points[0].timestamp : 0;
+    const totalTime = points.length > 1 ? points[points.length - 1].timestamp - points[0].timestamp : 0;
     const avgSpeed = totalDriveTime > 0 ? (totalDistance / (totalDriveTime / 1000)) * 3.6 : 0;
 
     // DOM'u güncelle - SADECE MEVCUT ELEMENTLERİ
@@ -843,7 +832,66 @@ function updateChart(points) {
 }
 
 // Hata yönetimi
-window.addEventListener('error', function(e) {
+window.addEventListener('error', function (e) {
     console.error('Global hata:', e.error);
     showError('Bir hata oluştu');
 });
+
+// Telegram'dan dosyayı indirip okuyan fonksiyon
+async function fetchLogFromTelegram(fileId, targetDate) {
+    try {
+        const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
+        const fileInfo = await fileInfoRes.json();
+
+        if (fileInfo.ok) {
+            const filePath = fileInfo.result.file_path;
+            const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
+
+            const fileRes = await fetch(downloadUrl);
+            const csvText = await fileRes.text();
+
+            const points = parseCSV(csvText, targetDate);
+
+            if (points.length < 2) {
+                hideLoading();
+                showToast(`${targetDate} tarihine ait kayıt bulunamadı.`, 'warning');
+                return;
+            }
+
+            // Senin mevcut harita çizim fonksiyonuna gönderiyoruz
+            updateMapWithPoints(points);
+            hideLoading();
+            showToast(`${points.length} nokta başarıyla yüklendi`, 'success');
+        }
+    } catch (error) {
+        console.error('Bridge Hatası:', error);
+        hideLoading();
+        showToast('Veri aktarımı başarısız oldu.', 'error');
+    }
+}
+
+// Log dosyasını (CSV) parçalayıp senin formatına sokan fonksiyon
+function parseCSV(csvText, targetDate) {
+    const lines = csvText.trim().split('\n');
+    const points = [];
+
+    lines.forEach(line => {
+        const parts = line.split(',');
+        if (parts.length >= 5) {
+            const dateTimeStr = parts[0]; // "2024-01-29 14:30:00"
+            const datePart = dateTimeStr.split(' ')[0]; // "2024-01-29"
+
+            if (datePart === targetDate) {
+                points.push({
+                    lat: parseFloat(parts[1]),
+                    lng: parseFloat(parts[2]),
+                    speed: parseFloat(parts[3]),
+                    bearing: parseFloat(parts[4]),
+                    timestamp: new Date(dateTimeStr.replace(' ', 'T')).getTime(),
+                    time: new Date(dateTimeStr.replace(' ', 'T'))
+                });
+            }
+        }
+    });
+    return points;
+}
