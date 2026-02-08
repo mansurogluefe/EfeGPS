@@ -840,6 +840,7 @@ window.addEventListener('error', function (e) {
 // Telegram'dan dosyayı indirip okuyan fonksiyon
 async function fetchLogFromTelegram(fileId, targetDate) {
     try {
+        // 1. Telegram'dan dosya bilgilerini al (Burası genellikle sorun çıkarmaz)
         const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
         const fileInfo = await fileInfoRes.json();
 
@@ -847,26 +848,33 @@ async function fetchLogFromTelegram(fileId, targetDate) {
             const filePath = fileInfo.result.file_path;
             const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
 
-            const fileRes = await fetch(downloadUrl);
+            // --- CORS ÇÖZÜMÜ BAŞLANGICI ---
+            // Telegram'ın engeline takılmamak için dosyayı bir proxy (aracı) üzerinden indiriyoruz.
+            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(downloadUrl)}`;
+
+            const fileRes = await fetch(proxyUrl);
+            if (!fileRes.ok) throw new Error("Dosya indirme aracı başarısız oldu.");
+
             const csvText = await fileRes.text();
+            // --- CORS ÇÖZÜMÜ BİTİŞİ ---
 
             const points = parseCSV(csvText, targetDate);
 
             if (points.length < 2) {
                 hideLoading();
-                showToast(`${targetDate} tarihine ait kayıt bulunamadı.`, 'warning');
+                showToast(`${targetDate} tarihine ait veri bulunamadı.`, 'warning');
                 return;
             }
 
-            // Senin mevcut harita çizim fonksiyonuna gönderiyoruz
+            // Mevcut harita fonksiyonuna veriyi pasla
             updateMapWithPoints(points);
             hideLoading();
-            showToast(`${points.length} nokta başarıyla yüklendi`, 'success');
+            showToast(`${points.length} konum noktası yüklendi.`, 'success');
         }
     } catch (error) {
         console.error('Bridge Hatası:', error);
         hideLoading();
-        showToast('Veri aktarımı başarısız oldu.', 'error');
+        showToast('Dosya çekilirken CORS engeline takıldı veya bağlantı koptu.', 'error');
     }
 }
 
