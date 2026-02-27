@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EfeGPS - Anlık Takip</title>
+
+    <!-- PWA meta tags -->
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo_v2.png">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <style>
+        :root {
+            --primary: #007aff;
+            /* Apple Blue */
+            --primary-dark: #0056b3;
+            --bg-glass: rgba(255, 255, 255, 0.82);
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --radius: 18px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background: #f2f2f7;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            padding-top: env(safe-area-inset-top);
+            padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left);
+            padding-right: env(safe-area-inset-right);
+            touch-action: none;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            z-index: 1;
+        }
+
+        /* Glass Floating Elements */
+        .glass-panel {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 0.5px solid rgba(0, 0, 0, 0.05);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            z-index: 1000;
+            position: absolute;
+        }
+
+        /* Header */
+        header {
+            top: calc(15px + env(safe-area-inset-top));
+            left: 15px;
+            right: 15px;
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.15rem;
+            color: var(--text-main);
+        }
+
+        .brand img {
+            height: 38px;
+            width: auto;
+            border-radius: 6px;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            background: rgba(0, 0, 0, 0.04);
+            border: none;
+            width: 42px;
+            height: 42px;
+            border-radius: 21px;
+            font-size: 22px;
+            color: var(--text-main);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .icon-btn:active {
+            transform: scale(0.92);
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        /* Settings Menu */
+        #settings-menu {
+            display: none;
+            top: 75px;
+            right: 15px;
+            width: 250px;
+            padding: 15px;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .menu-title {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text-main);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            padding-bottom: 8px;
+        }
+
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .icon-choice {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .icon-choice:hover,
+        .icon-choice.active {
+            background: rgba(0, 122, 255, 0.1);
+        }
+
+        .icon-choice img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .icon-name {
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--text-sub);
+        }
+
+        /* Info Card */
+        #status-card {
+            bottom: calc(20px + env(safe-area-inset-bottom));
+            left: 15px;
+            right: 15px;
+            padding: 22px;
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .status-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+
+        .status-title h2 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .status-title p {
+            font-size: 0.85rem;
+            color: var(--text-sub);
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(52, 199, 89, 0.12);
+            color: #24b24b;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            animation: pulse 2.5s infinite;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .stat-item {
+            background: rgba(0, 0, 0, 0.03);
+            padding: 14px;
+            border-radius: 14px;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-sub);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .action-btns {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            width: 52px;
+            background: rgba(0, 0, 0, 0.05);
+            color: var(--text-main);
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.6;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .motor-marker-wrapper {
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.12));
+        }
+
+        .leaflet-control-container {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="glass-panel">
+        <div class="brand">
+            <img src="logo_v2.png" alt="EfeGPS" />
+            <span>EfeGPS</span>
+        </div>
+        <div class="header-actions">
+            <button id="settings-btn" class="icon-btn" aria-label="Ayarlar">
+                <ion-icon name="options-outline"></ion-icon>
+            </button>
+            <button id="recenter-btn" class="icon-btn" aria-label="Beni Bul">
+                <ion-icon name="locate"></ion-icon>
+            </button>
+        </div>
+    </header>
+
+    <div id="settings-menu" class="glass-panel">
+        <div class="menu-title">Araç İkonu Seç</div>
+        <div class="icon-grid">
+            <div class="icon-choice active" data-icon="motor_icon.png">
+                <img src="motor_icon.png" alt="Motor 1">
+                <span class="icon-name">Varsayılan</span>
+            </div>
+            <div class="icon-choice" data-icon="motor_icon_v3.png">
+                <img src="motor_icon_v3.png" alt="Motor 2">
+                <span class="icon-name">Soft Motor</span>
+            </div>
+            <div class="icon-choice" data-icon="motor_icon_v2.png">
+                <img src="motor_icon_v2.png" alt="Motor 3">
+                <span class="icon-name">Scooter</span>
+            </div>
+            <div class="icon-choice" data-icon="car_icon_1.png">
+                <ion-icon name="car-sport-outline" style="font-size: 30px; color: #444;"></ion-icon>
+                <span class="icon-name">Araba 1</span>
+            </div>
+            <div class="icon-choice" data-icon="car_icon_2.png">
+                <ion-icon name="car-outline" style="font-size: 30px; color: #444;"></ion-icon>
+                <span class="icon-name">Araba 2</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <div id="status-card" class="glass-panel">
+        <div class="status-header">
+            <div class="status-title">
+                <h2>Araç Durumu</h2>
+                <p id="last-update">Veri bekleniyor...</p>
+            </div>
+            <div class="live-indicator">
+                <ion-icon name="radio"></ion-icon>
+                CANLI
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-label">Hız</span>
+                <span class="stat-value"><span id="speed">0</span><span class="stat-unit"> km/s</span></span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Bağlantı</span>
+                <span class="stat-value" style="font-size: 1.1rem;">Aktif</span>
+            </div>
+        </div>
+
+        <div class="action-btns">
+            <button id="rota-btn" class="btn-primary">
+                <ion-icon name="map-outline"></ion-icon>
+                Rota Analizi
+            </button>
+            <button id="share-btn" class="btn-secondary" aria-label="Paylaş">
+                <ion-icon name="share-outline" style="font-size: 22px;"></ion-icon>
+            </button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+        // 1. Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyADWoqmLxx9jP-ojyxzETXChJa39f514DI",
+            authDomain: "efegps-f38f0.firebaseapp.com",
+            databaseURL: "https://efegps-f38f0-default-rtdb.firebaseio.com",
+            projectId: "efegps-f38f0",
+            storageBucket: "efegps-f38f0.firebasestorage.app",
+            messagingSenderId: "896214577959",
+            appId: "1:896214577959:web:f8b3f64ecfecbdabfe64ac"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // 2. Map Initialization
+        const initialLat = 36.219;
+        const initialLng = 36.169;
+        const map = L.map('map', {
+            zoomControl: false,
+            attributionControl: false,
+            tap: false
+        }).setView([initialLat, initialLng], 16);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20,
+            subdomains: 'abcd'
+        }).addTo(map);
+
+        // 3. Custom Marker Plugin
+        (function () {
+            var proto_initIcon = L.Marker.prototype._initIcon;
+            var proto_setPos = L.Marker.prototype._setPos;
+            L.Marker.addInitHook(function () {
+                var iconOptions = this.options.icon && this.options.icon.options;
+                var iconAnchor = iconOptions && this.options.icon.options.iconAnchor;
+                if (iconAnchor) { iconAnchor = (iconAnchor[0] + 'px ' + iconAnchor[1] + 'px'); }
+                this.options.rotationOrigin = this.options.rotationOrigin || iconAnchor || 'center center';
+                this.options.rotationAngle = this.options.rotationAngle || 0;
+            });
+            L.Marker.include({
+                _initIcon: function () { proto_initIcon.call(this); },
+                _setPos: function (pos) {
+                    proto_setPos.call(this, pos);
+                    if (this.options.rotationAngle) {
+                        this._icon.style[L.DomUtil.TRANSFORM + 'Origin'] = this.options.rotationOrigin;
+                        this._icon.style[L.DomUtil.TRANSFORM] += ' rotate(' + this.options.rotationAngle + 'deg)';
+                    }
+                },
+                setRotationAngle: function (angle) { this.options.rotationAngle = angle; this.update(); return this; }
+            });
+        })();
+
+        // 4. Vehicle Icon Logic
+        let currentIconUrl = localStorage.getItem('efegps_icon') || 'motor_icon.png';
+
+        function createVehicleIcon(url) {
+            return L.icon({
+                iconUrl: url,
+                iconSize: [60, 60],
+                iconAnchor: [30, 30],
+                className: 'motor-marker-wrapper'
+            });
+        }
+
+        let motorMarker = null;
+        let lastLat = initialLat;
+        let lastLng = initialLng;
+
+        // 5. Firebase Updates
+        const motorRef = database.ref('motor_durumu');
+        motorRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const { latitude, longitude, speed, bearing, lastUpdate } = data;
+                const pos = [latitude, longitude];
+                lastLat = latitude;
+                lastLng = longitude;
+
+                document.getElementById('speed').textContent = Math.round(speed || 0);
+                const date = new Date(lastUpdate);
+                document.getElementById('last-update').textContent = `Güncellendi: ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+
+                if (motorMarker) {
+                    motorMarker.setLatLng(pos);
+                    motorMarker.setRotationAngle(bearing || 0);
+                } else {
+                    motorMarker = L.marker(pos, {
+                        icon: createVehicleIcon(currentIconUrl)
+                    }).addTo(map);
+                    map.setView(pos, 16);
+                }
+            }
+        });
+
+        // 6. UI Interactions & Settings
+
+        // Settings Toggle
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsMenu = document.getElementById('settings-menu');
+        settingsBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            settingsMenu.style.display = settingsMenu.style.display === 'block' ? 'none' : 'block';
+        });
+
+        document.addEventListener('click', () => {
+            settingsMenu.style.display = 'none';
+        });
+
+        settingsMenu.addEventListener('click', (e) => e.stopPropagation());
+
+        // Icon Selection
+        const iconChoices = document.querySelectorAll('.icon-choice');
+
+        // Set initial active state
+        iconChoices.forEach(choice => {
+            if (choice.dataset.icon === currentIconUrl) {
+                choice.classList.add('active');
+            } else {
+                choice.classList.remove('active');
+            }
+        });
+
+        iconChoices.forEach(choice => {
+            choice.addEventListener('click', () => {
+                const newUrl = choice.dataset.icon;
+                if (newUrl === 'car_icon_placeholder.png') return; // Placeholder koruması
+
+                currentIconUrl = newUrl;
+                localStorage.setItem('efegps_icon', newUrl);
+
+                // Marker'ı anlık güncelle
+                if (motorMarker) {
+                    motorMarker.setIcon(createVehicleIcon(newUrl));
+                }
+
+                // UI güncelle
+                iconChoices.forEach(c => c.classList.remove('active'));
+                choice.classList.add('active');
+                settingsMenu.style.display = 'none';
+            });
+        });
+
+        // Recenter
+        document.getElementById('recenter-btn').addEventListener('click', () => {
+            map.flyTo([lastLat, lastLng], 17, { duration: 1.2 });
+        });
+
+        // Rota Analizi
+        document.getElementById('rota-btn').addEventListener('click', () => {
+            window.location.href = 'rota_analiz.html';
+        });
+
+        // Paylaşma
+        document.getElementById('share-btn').addEventListener('click', async () => {
+            if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'EfeGPS Canlı Konum',
+                        text: 'Aracımın anlık konumunu takip et!',
+                        url: window.location.href
+                    });
+                } catch (err) { }
+            }
+        });
+
+        window.addEventListener('resize', () => map.invalidateSize());
+
+    </script>
+
+</body>
+
+</html>
