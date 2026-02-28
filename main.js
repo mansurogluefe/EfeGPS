@@ -29,6 +29,7 @@ const database = firebase.database();
 let map, routeLayer, stopsLayer, analyticsChart;
 let speedGradientLayers = [];
 let currentPoints = [];
+let cachedLogData = null; // CSV verisini bellekte tutmak için
 
 // Sayfa yüklendiğinde
 document.addEventListener('DOMContentLoaded', function () {
@@ -301,6 +302,17 @@ function loadRoute(dateStr) {
 
     clearMapLayers();
     resetDisplay();
+
+    // Eğer veri zaten bellekteyse (3 günlük log), direkt oradan filtrele
+    if (cachedLogData) {
+        console.log('Veri bellekten (cache) yükleniyor...');
+        const points = parseCSV(cachedLogData, dateStr);
+        if (points.length >= 2) {
+            updateMapWithPoints(points);
+            hideLoading();
+            return;
+        }
+    }
 
     // 1. Telefona "Dosyayı Telegram'a yükle" emri gönder
     database.ref('log_isteği').set(true);
@@ -847,6 +859,7 @@ async function fetchLogFromTelegram(fileId, targetDate) {
             if (!fileRes.ok) throw new Error("Dosya indirme aracı başarısız oldu.");
 
             const csvText = await fileRes.text();
+            cachedLogData = csvText; // Veriyi belleğe al
             // --- CORS ÇÖZÜMÜ BİTİŞİ ---
 
             const points = parseCSV(csvText, targetDate);

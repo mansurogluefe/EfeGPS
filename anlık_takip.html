@@ -35,7 +35,6 @@
     <style>
         :root {
             --primary: #007aff;
-            /* Apple Blue */
             --primary-dark: #0056b3;
             --bg-glass: rgba(255, 255, 255, 0.82);
             --text-main: #1c1c1e;
@@ -73,7 +72,6 @@
             z-index: 1;
         }
 
-        /* Glass Floating Elements */
         .glass-panel {
             background: var(--bg-glass);
             backdrop-filter: blur(20px) saturate(180%);
@@ -85,7 +83,6 @@
             position: absolute;
         }
 
-        /* Header */
         header {
             top: calc(15px + env(safe-area-inset-top));
             left: 15px;
@@ -136,146 +133,6 @@
             background: rgba(0, 0, 0, 0.08);
         }
 
-        /* Settings Menu */
-        #settings-menu {
-            display: none;
-            top: 75px;
-            right: 15px;
-            width: 250px;
-            padding: 15px;
-            animation: fadeIn 0.2s ease-out;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .menu-title {
-            font-size: 0.9rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            color: var(--text-main);
-            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-            padding-bottom: 8px;
-        }
-
-        .icon-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 10px;
-        }
-
-        .icon-choice {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 5px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 12px;
-            transition: background 0.2s;
-        }
-
-        .icon-choice:hover,
-        .icon-choice.active {
-            background: rgba(0, 122, 255, 0.1);
-        }
-
-        .icon-choice img {
-            width: 40px;
-            height: 40px;
-            object-fit: contain;
-        }
-
-        .icon-name {
-            font-size: 0.65rem;
-            font-weight: 600;
-            color: var(--text-sub);
-        }
-
-        /* Control Switches */
-        .control-section {
-            margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(0, 0, 0, 0.05);
-        }
-
-        .control-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-        }
-
-        .control-label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        /* iOS Style Switch */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #ccc;
-            transition: .4s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-
-        input:checked+.slider {
-            background-color: var(--primary);
-        }
-
-        input:checked+.slider:before {
-            transform: translateX(20px);
-        }
-
-        .range-slider {
-            width: 100%;
-            margin-top: 5px;
-        }
-
-        /* Info Card */
         #status-card {
             bottom: calc(20px + env(safe-area-inset-bottom));
             left: 15px;
@@ -408,7 +265,8 @@
             <span>EfeGPS</span>
         </div>
         <div class="header-actions">
-            <button id="settings-btn" class="icon-btn" aria-label="Ayarlar">
+            <button id="settings-btn" class="icon-btn" onclick="window.location.href='settings.html'"
+                aria-label="Ayarlar">
                 <ion-icon name="options-outline"></ion-icon>
             </button>
             <button id="recenter-btn" class="icon-btn" aria-label="Beni Bul">
@@ -416,89 +274,6 @@
             </button>
         </div>
     </header>
-
-    <div id="settings-menu" class="glass-panel">
-        <div class="menu-title">Araç İkonu Seç</div>
-        <div class="icon-grid">
-            <div class="icon-choice active" data-icon="motor_icon.png">
-                <img src="motor_icon.png" alt="Motor 1">
-                <span class="icon-name">Varsayılan</span>
-            </div>
-            <div class="icon-choice" data-icon="motor_icon_v3.png">
-                <img src="motor_icon_v3.png" alt="Motor 2">
-                <span class="icon-name">Soft Motor</span>
-            </div>
-            <div class="icon-choice" data-icon="motor_icon_v2.png">
-                <img src="motor_icon_v2.png" alt="Motor 3">
-                <span class="icon-name">Scooter</span>
-            </div>
-            <div class="icon-choice" data-icon="car_icon_1.png">
-                <ion-icon name="car-sport-outline" style="font-size: 30px; color: #444;"></ion-icon>
-                <span class="icon-name">Araba 1</span>
-            </div>
-            <div class="icon-choice" data-icon="car_icon_2.png">
-                <ion-icon name="car-outline" style="font-size: 30px; color: #444;"></ion-icon>
-                <span class="icon-name">Araba 2</span>
-            </div>
-        </div>
-
-        <div class="control-section">
-            <div class="menu-title">Cihaz Kontrolleri</div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <ion-icon name="lock-closed-outline"></ion-icon>
-                    Motor Kilidi
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="lock-switch">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <ion-icon name="warning-outline"></ion-icon>
-                    Sarsıntı Alarmı
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="tilt-switch">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div class="control-item">
-                <div class="control-label">
-                    <ion-icon name="person-outline"></ion-icon>
-                    Misafir Modu
-                </div>
-                <label class="switch">
-                    <input type="checkbox" id="guest-switch">
-                    <span class="slider"></span>
-                </label>
-            </div>
-
-            <div style="margin-top: 10px;">
-                <div class="control-label" style="justify-content: space-between;">
-                    <span>Hız Limiti</span>
-                    <span id="limit-val" style="color: var(--primary); font-weight: bold;">50 km/s</span>
-                </div>
-                <input type="range" id="speed-slider" class="range-slider" min="20" max="120" step="5" value="50">
-            </div>
-
-            <button id="send-log-btn" class="btn-primary" style="margin-top: 15px; font-size: 0.8rem; padding: 10px;">
-                <ion-icon name="document-text-outline"></ion-icon>
-                Log Dosyasını İste
-            </button>
-        </div>
-
-        <div style="margin-top: 15px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 10px;">
-            <button id="logout-btn" class="btn-secondary" style="width: 100%; gap: 8px;">
-                <ion-icon name="log-out-outline"></ion-icon>
-                Oturumu Kapat
-            </button>
-        </div>
-    </div>
 
     <div id="map"></div>
 
@@ -543,15 +318,10 @@
     <script src="config.js"></script>
 
     <script>
-        // 1. Firebase Configuration (Read from config.js)
-        if (typeof firebaseConfig === 'undefined') {
-            alert('Yapılandırma dosyası (config.js) bulunamadı!');
-        }
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
         const auth = firebase.auth();
 
-        // 2. Auth Guard
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'login.html';
@@ -561,7 +331,6 @@
         });
 
         function startApp() {
-            // Map Initialization
             const initialLat = 36.219;
             const initialLng = 36.169;
             const map = L.map('map', {
@@ -570,14 +339,11 @@
                 tap: false
             }).setView([initialLat, initialLng], 16);
 
-            // ... (diğer tüm harita ve firebase kodları buraya girecek)
-
             L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
                 maxZoom: 20,
                 subdomains: 'abcd'
             }).addTo(map);
 
-            // 3. Custom Marker Plugin
             (function () {
                 var proto_initIcon = L.Marker.prototype._initIcon;
                 var proto_setPos = L.Marker.prototype._setPos;
@@ -601,7 +367,6 @@
                 });
             })();
 
-            // 4. Vehicle Icon Logic
             let currentIconUrl = localStorage.getItem('efegps_icon') || 'motor_icon.png';
 
             function createVehicleIcon(url) {
@@ -617,7 +382,6 @@
             let lastLat = initialLat;
             let lastLng = initialLng;
 
-            // 5. Firebase Updates
             const motorRef = database.ref('motor_durumu');
             motorRef.on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -643,65 +407,14 @@
                 }
             });
 
-            // 6. UI Interactions & Settings
-
-            // Settings Toggle
-            const settingsBtn = document.getElementById('settings-btn');
-            const settingsMenu = document.getElementById('settings-menu');
-            settingsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                settingsMenu.style.display = settingsMenu.style.display === 'block' ? 'none' : 'block';
-            });
-
-            document.addEventListener('click', () => {
-                settingsMenu.style.display = 'none';
-            });
-
-            settingsMenu.addEventListener('click', (e) => e.stopPropagation());
-
-            // Icon Selection
-            const iconChoices = document.querySelectorAll('.icon-choice');
-
-            // Set initial active state
-            iconChoices.forEach(choice => {
-                if (choice.dataset.icon === currentIconUrl) {
-                    choice.classList.add('active');
-                } else {
-                    choice.classList.remove('active');
-                }
-            });
-
-            iconChoices.forEach(choice => {
-                choice.addEventListener('click', () => {
-                    const newUrl = choice.dataset.icon;
-                    if (newUrl === 'car_icon_placeholder.png') return; // Placeholder koruması
-
-                    currentIconUrl = newUrl;
-                    localStorage.setItem('efegps_icon', newUrl);
-
-                    // Marker'ı anlık güncelle
-                    if (motorMarker) {
-                        motorMarker.setIcon(createVehicleIcon(newUrl));
-                    }
-
-                    // UI güncelle
-                    iconChoices.forEach(c => c.classList.remove('active'));
-                    choice.classList.add('active');
-                    settingsMenu.style.display = 'none';
-                });
-            });
-
-            // Recenter
             document.getElementById('recenter-btn').addEventListener('click', () => {
                 map.flyTo([lastLat, lastLng], 17, { duration: 1.2 });
             });
 
-            // Rota Analizi
             document.getElementById('rota-btn').addEventListener('click', () => {
                 window.location.href = 'rota_analiz.html';
             });
 
-            // Paylaşma
             document.getElementById('share-btn').addEventListener('click', async () => {
                 if (navigator.share) {
                     try {
@@ -715,58 +428,10 @@
             });
 
             window.addEventListener('resize', () => map.invalidateSize());
-
-            // Logout logic
-            document.getElementById('logout-btn').addEventListener('click', () => {
-                auth.signOut().then(() => {
-                    window.location.href = 'login.html';
-                });
-            });
-
-            // --- Cihaz Kontrol Mantığı (Firebase Senkronizasyonu) ---
-            const ayarlarRef = database.ref('ayarlar');
-            const logReqRef = database.ref('log_isteği');
-
-            const lockSwitch = document.getElementById('lock-switch');
-            const tiltSwitch = document.getElementById('tilt-switch');
-            const guestSwitch = document.getElementById('guest-switch');
-            const speedSlider = document.getElementById('speed-slider');
-            const limitVal = document.getElementById('limit-val');
-            const sendLogBtn = document.getElementById('send-log-btn');
-
-            // Firebase'den mevcut ayarları oku
-            ayarlarRef.on('value', (snapshot) => {
-                const settings = snapshot.val();
-                if (settings) {
-                    lockSwitch.checked = settings.isLocked || false;
-                    tiltSwitch.checked = settings.isTiltAlertEnabled || false;
-                    guestSwitch.checked = settings.isGuestModeEnabled || false;
-                    speedSlider.value = settings.speedLimit || 50;
-                    limitVal.textContent = `${speedSlider.value} km/s`;
-                }
-            });
-
-            // Web'den yapılan değişiklikleri Firebase'e yaz
-            lockSwitch.addEventListener('change', () => ayarlarRef.update({ isLocked: lockSwitch.checked }));
-            tiltSwitch.addEventListener('change', () => ayarlarRef.update({ isTiltAlertEnabled: tiltSwitch.checked }));
-            guestSwitch.addEventListener('change', () => ayarlarRef.update({ isGuestModeEnabled: guestSwitch.checked }));
-
-            speedSlider.addEventListener('input', () => {
-                limitVal.textContent = `${speedSlider.value} km/s`;
-            });
-            speedSlider.addEventListener('change', () => {
-                ayarlarRef.update({ speedLimit: parseInt(speedSlider.value) });
-            });
-
-            sendLogBtn.addEventListener('click', () => {
-                logReqRef.setValue(true);
-                alert('Log dosyası isteği cihaza gönderildi!');
-            });
         }
     </script>
 
     <script>
-        // PWA Service Worker Registration
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')

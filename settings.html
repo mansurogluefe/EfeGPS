@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EfeGPS - Ayarlar</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#f2f2f7">
+    <link rel="apple-touch-icon" href="logo_v2.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+    <script src="config.js"></script>
+
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+
+    <style>
+        :root {
+            --primary: #007aff;
+            --bg: #f2f2f7;
+            --white: #ffffff;
+            --text-main: #1c1c1e;
+            --text-sub: #8e8e93;
+            --border: rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            padding-bottom: 40px;
+        }
+
+        header {
+            background-color: var(--white);
+            padding: 60px 20px 20px;
+            border-bottom: 0.5px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .back-btn {
+            color: var(--primary);
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-weight: 500;
+        }
+
+        h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--text-sub);
+            margin: 20px 10px 8px;
+            font-weight: 600;
+        }
+
+        .settings-card {
+            background-color: var(--white);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 0.5px solid var(--border);
+        }
+
+        .settings-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 16px;
+            background-color: var(--white);
+            transition: background 0.2s;
+        }
+
+        .settings-item:not(:last-child) {
+            border-bottom: 0.5px solid var(--border);
+        }
+
+        .item-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 500;
+        }
+
+        .item-icon {
+            width: 30px;
+            height: 30px;
+            background-color: var(--bg);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .item-icon.blue {
+            color: #007aff;
+            background-color: rgba(0, 122, 255, 0.1);
+        }
+
+        .item-icon.orange {
+            color: #ff9500;
+            background-color: rgba(255, 149, 0, 0.1);
+        }
+
+        .item-icon.green {
+            color: #34c759;
+            background-color: rgba(52, 199, 89, 0.1);
+        }
+
+        .item-icon.red {
+            color: #ff3b30;
+            background-color: rgba(255, 59, 48, 0.1);
+        }
+
+        /* Switch UI */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 51px;
+            height: 31px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #e9e9eb;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 27px;
+            width: 27px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        input:checked+.slider {
+            background-color: #34c759;
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        /* Inputs */
+        input[type="range"] {
+            width: 100%;
+            margin: 10px 0;
+        }
+
+        input[type="date"] {
+            border: none;
+            background: none;
+            font-size: 1rem;
+            color: var(--primary);
+            text-align: right;
+            outline: none;
+        }
+
+        .btn-action {
+            width: 100%;
+            padding: 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, opacity 0.2s;
+        }
+
+        .btn-action:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+
+        .btn-logout {
+            background-color: #ff3b30;
+        }
+
+        .info-text {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin: 8px 10px;
+            line-height: 1.4;
+        }
+
+        #limit-display {
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        @media (max-width: 480px) {
+            header {
+                padding-top: 50px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-top">
+            <button class="back-btn" onclick="window.location.href='anlık_takip.html'">
+                <ion-icon name="chevron-back"></ion-icon>
+                Harita
+            </button>
+            <h1>Ayarlar</h1>
+            <div style="width: 60px;"></div>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <div class="section-title">Cihaz Güvenliği</div>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div class="item-label">
+                    <div class="item-icon red">
+                        <ion-icon name="lock-closed"></ion-icon>
+                    </div>
+                    <span>Motor Kilidi</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="lock-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-item">
+                <div class="item-label">
+                    <div class="item-icon orange">
+                        <ion-icon name="warning"></ion-icon>
+                    </div>
+                    <span>Sarsıntı Alarmı</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="tilt-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+            <div class="settings-item">
+                <div class="item-label">
+                    <div class="item-icon blue">
+                        <ion-icon name="person"></ion-icon>
+                    </div>
+                    <span>Misafir Modu</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="guest-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+        <p class="info-text">Kilidi açtığınızda cihazınızdaki fiziksel koruma özellikleri devre dışı kalır.</p>
+
+        <div class="section-title">Sürüş Ayarları</div>
+        <div class="settings-card">
+            <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px;">
+                    <div class="item-label">
+                        <div class="item-icon green">
+                            <ion-icon name="speedometer"></ion-icon>
+                        </div>
+                        <span>Hız Limiti</span>
+                    </div>
+                    <span id="limit-display">50 km/s</span>
+                </div>
+                <input type="range" id="speed-slider" min="20" max="150" step="5" value="50">
+            </div>
+        </div>
+        <p class="info-text">Bu limit aşıldığında Telegram üzerinden anlık bildirim alırsınız.</p>
+
+        <div class="section-title">Gelişmiş Veri Yönetimi</div>
+        <div class="settings-card">
+            <div class="settings-item">
+                <div class="item-label">
+                    <div class="item-icon blue">
+                        <ion-icon name="calendar"></ion-icon>
+                    </div>
+                    <span>Geçmiş Log İste</span>
+                </div>
+                <input type="date" id="log-date-picker">
+            </div>
+            <div style="padding: 16px;">
+                <button id="request-log-btn" class="btn-action">
+                    <ion-icon name="cloud-download-outline"
+                        style="vertical-align: middle; margin-right: 5px;"></ion-icon>
+                    Log Dosyasını İste
+                </button>
+            </div>
+        </div>
+        <p class="info-text">İstediğiniz tarihteki tüm sürüş verileri cihaz tarafından Telegram botunuza
+            gönderilecektir.</p>
+
+        <div class="section-title">Hesap</div>
+        <div class="settings-card">
+            <div class="settings-item">
+                <button id="logout-btn" class="btn-action btn-logout">
+                    <ion-icon name="log-out-outline" style="vertical-align: middle; margin-right: 5px;"></ion-icon>
+                    Oturumu Kapat
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+        const auth = firebase.auth();
+
+        // Elements
+        const lockSwitch = document.getElementById('lock-switch');
+        const tiltSwitch = document.getElementById('tilt-switch');
+        const guestSwitch = document.getElementById('guest-switch');
+        const speedSlider = document.getElementById('speed-slider');
+        const limitDisplay = document.getElementById('limit-display');
+        const logDatePicker = document.getElementById('log-date-picker');
+        const requestLogBtn = document.getElementById('request-log-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // Set default date to today
+        const today = new Date().toISOString().split('T')[0];
+        logDatePicker.value = today;
+
+        // Firebase Sync
+        const ayarlarRef = database.ref('ayarlar');
+
+        ayarlarRef.on('value', (snapshot) => {
+            const settings = snapshot.val();
+            if (settings) {
+                lockSwitch.checked = settings.isLocked || false;
+                tiltSwitch.checked = settings.isTiltAlertEnabled || false;
+                guestSwitch.checked = settings.isGuestModeEnabled || false;
+                speedSlider.value = settings.speedLimit || 50;
+                limitDisplay.textContent = `${speedSlider.value} km/s`;
+            }
+        });
+
+        // Event Listeners
+        lockSwitch.addEventListener('change', () => ayarlarRef.update({ isLocked: lockSwitch.checked }));
+        tiltSwitch.addEventListener('change', () => ayarlarRef.update({ isTiltAlertEnabled: tiltSwitch.checked }));
+        guestSwitch.addEventListener('change', () => ayarlarRef.update({ isGuestModeEnabled: guestSwitch.checked }));
+
+        speedSlider.addEventListener('input', () => {
+            limitDisplay.textContent = `${speedSlider.value} km/s`;
+        });
+        speedSlider.addEventListener('change', () => {
+            ayarlarRef.update({ speedLimit: parseInt(speedSlider.value) });
+        });
+
+        requestLogBtn.addEventListener('click', () => {
+            const selectedDate = logDatePicker.value;
+            if (!selectedDate) {
+                alert('Lütfen bir tarih seçin.');
+                return;
+            }
+
+            // Gelişmiş log isteği yapısı
+            database.ref('log_isteği').set({
+                active: true,
+                date: selectedDate,
+                timestamp: Date.now()
+            });
+
+            alert(`${selectedDate} tarihli log isteği cihazınıza iletildi.`);
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            auth.signOut().then(() => {
+                window.location.href = 'login.html';
+            });
+        });
+
+        // Auth Guard
+        auth.onAuthStateChanged((user) => {
+            if (!user) window.location.href = 'login.html';
+        });
+    </script>
+</body>
+
+</html>
