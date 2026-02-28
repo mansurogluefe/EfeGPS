@@ -160,6 +160,49 @@
             background-color: rgba(255, 59, 48, 0.1);
         }
 
+        /* Icon Grid */
+        .icon-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 16px;
+        }
+
+        .icon-option {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg);
+        }
+
+        .icon-option img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .icon-option span {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-sub);
+        }
+
+        .icon-option.active {
+            border-color: var(--primary);
+            background: rgba(0, 122, 255, 0.05);
+        }
+
+        .icon-option.active span {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
         /* Switch UI */
         .switch {
             position: relative;
@@ -321,6 +364,25 @@
         </div>
         <p class="info-text">Kilidi açtığınızda cihazınızdaki fiziksel koruma özellikleri devre dışı kalır.</p>
 
+        <div class="section-title">Harita İkonu</div>
+        <div class="settings-card">
+            <div class="icon-grid">
+                <div class="icon-option" data-icon="motor_icon.png">
+                    <img src="motor_icon.png" alt="Klasik">
+                    <span>Klasik</span>
+                </div>
+                <div class="icon-option" data-icon="motor_icon_v2.png">
+                    <img src="motor_icon_v2.png" alt="Modern">
+                    <span>Sport</span>
+                </div>
+                <div class="icon-option" data-icon="motor_icon_v3.png">
+                    <img src="motor_icon_v3.png" alt="Premium">
+                    <span>Premium</span>
+                </div>
+            </div>
+        </div>
+        <p class="info-text">Harita üzerinde aracınızın nasıl görüneceğini seçin.</p>
+
         <div class="section-title">Sürüş Ayarları</div>
         <div class="settings-card">
             <div class="settings-item" style="flex-direction: column; align-items: flex-start;">
@@ -402,7 +464,25 @@
                 guestSwitch.checked = settings.isGuestModeEnabled || false;
                 speedSlider.value = settings.speedLimit || 50;
                 limitDisplay.textContent = `${speedSlider.value} km/s`;
+
+                // İkonu güncelle
+                const activeIcon = settings.vehicleIcon || 'motor_icon.png';
+                document.querySelectorAll('.icon-option').forEach(opt => {
+                    if (opt.dataset.icon === activeIcon) {
+                        opt.classList.add('active');
+                    } else {
+                        opt.classList.remove('active');
+                    }
+                });
             }
+        });
+
+        // İkon Seçimi listener
+        document.querySelectorAll('.icon-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                const iconPath = opt.dataset.icon;
+                ayarlarRef.update({ vehicleIcon: iconPath });
+            });
         });
 
         // Event Listeners

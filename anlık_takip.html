@@ -367,7 +367,18 @@
                 });
             })();
 
-            let currentIconUrl = localStorage.getItem('efegps_icon') || 'motor_icon.png';
+            let currentIconUrl = 'motor_icon.png';
+
+            // Firebase'den ikon ayarını dinle
+            database.ref('ayarlar/vehicleIcon').on('value', (snapshot) => {
+                const newIcon = snapshot.val();
+                if (newIcon && newIcon !== currentIconUrl) {
+                    currentIconUrl = newIcon;
+                    if (motorMarker) {
+                        motorMarker.setIcon(createVehicleIcon(currentIconUrl));
+                    }
+                }
+            });
 
             function createVehicleIcon(url) {
                 return L.icon({
