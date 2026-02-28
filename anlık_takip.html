@@ -10,12 +10,12 @@
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007aff">
-    <link rel="apple-touch-icon" href="logo_v3.png">
+    <link rel="apple-touch-icon" href="assets/logo_v3.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo_v3.png">
+    <link rel="icon" type="image/png" href="assets/logo_v3.png">
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -299,7 +299,7 @@
 
     <header class="glass-panel">
         <div class="brand">
-            <img src="logo_v3.png" alt="EfeGPS" />
+            <img src="assets/logo_v3.png" alt="EfeGPS" />
             <span>EfeGPS</span>
         </div>
         <div class="header-actions">
@@ -400,7 +400,7 @@
                 });
             })();
 
-            let currentIconUrl = 'motor_icon.png';
+            let currentIconUrl = 'assets/motor_icon.png';
 
             // Firebase'den ikon ayarını dinle
             database.ref('ayarlar/vehicleIcon').on('value', (snapshot) => {

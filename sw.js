@@ -1,4 +1,4 @@
-const CACHE_NAME = 'efegps-v3';
+const CACHE_NAME = 'efegps-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const ASSETS = [
   './style.css',
   './main.js',
   './config.js',
-  './logo_v3.png',
+  './assets/logo_v3.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];

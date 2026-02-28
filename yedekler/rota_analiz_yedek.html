@@ -3,19 +3,18 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EfeGPS - Rota Analizi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EfeGPS - Akıllı Rota Analizi</title>
 
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#007aff">
-    <link rel="apple-touch-icon" href="assets/logo_v3.png">
+    <link rel="apple-touch-icon" href="logo_v3.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="assets/logo_v3.png">
+    <link rel="icon" type="image/png" href="logo_v3.png">
 
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
@@ -37,6 +36,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
     <script>
+        // Auth Guard for Route Analysis
         const auth = firebase.auth();
         auth.onAuthStateChanged((user) => {
             if (!user) {
@@ -45,7 +45,7 @@
         });
     </script>
 
-    <!-- Ionicons -->
+    <!-- Ionicons (mobil ikonlar) -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
@@ -60,7 +60,7 @@
                 <span>Harita</span>
             </button>
             <div class="brand">
-                <img src="assets/logo_v3.png" alt="Logo">
+                <img src="logo_v3.png" alt="Logo">
                 <span>EfeGPS</span>
             </div>
         </div>
@@ -74,45 +74,6 @@
     <!-- Ana Harita -->
     <div id="map" aria-label="Harita"></div>
 
-    <!-- DURAKLAMA BOTTOM SHEET -->
-    <div id="stop-details-sheet" class="bottom-sheet glass-panel">
-        <div class="sheet-handle"></div>
-        <div class="sheet-content">
-            <div class="sheet-header">
-                <h3 id="sheet-title">Duraklama Detayı</h3>
-                <button class="close-sheet" onclick="closeStopDetails()">
-                    <ion-icon name="close"></ion-icon>
-                </button>
-            </div>
-            <div class="sheet-body">
-                <div class="detail-row">
-                    <ion-icon name="time-outline"></ion-icon>
-                    <div>
-                        <span class="label">Süre</span>
-                        <span id="sheet-duration" class="value">-</span>
-                    </div>
-                </div>
-                <div class="detail-row">
-                    <ion-icon name="play-outline"></ion-icon>
-                    <div>
-                        <span class="label">Başlangıç</span>
-                        <span id="sheet-start" class="value">-</span>
-                    </div>
-                </div>
-                <div class="detail-row">
-                    <ion-icon name="stop-outline"></ion-icon>
-                    <div>
-                        <span class="label">Bitiş</span>
-                        <span id="sheet-end" class="value">-</span>
-                    </div>
-                </div>
-                <button id="sheet-zoom-btn" class="btn-primary">
-                    <ion-icon name="locate"></ion-icon>
-                    Noktaya Odaklan
-                </button>
-            </div>
-        </div>
-    </div>
 
     <!-- Mobil Sidebar -->
     <div id="mobile-sidebar" class="sidebar-hidden glass-panel">
@@ -124,45 +85,75 @@
         </div>
 
         <div class="sidebar-content">
+            <!-- Hızlı Tarih Seçim Butonları -->
             <div class="quick-date-selector">
-                <button class="date-btn active" data-days="0">Bugün</button>
-                <button class="date-btn" data-days="1">Dün</button>
+                <button class="date-btn active" data-days="0" aria-label="Bugün">Bugün</button>
+                <button class="date-btn" data-days="1" aria-label="Dün">Dün</button>
             </div>
 
+            <!-- Saat Filtreleme -->
             <div class="filter-section">
                 <div class="filter-row">
                     <div class="filter-group">
-                        <label for="startTime">Başlangıç</label>
-                        <input type="time" id="startTime" class="filter-input" value="00:00">
+                        <label for="startTime">Başlangıç Saati</label>
+                        <input type="time" id="startTime" class="filter-input" value="00:00"
+                            aria-label="Başlangıç saati">
                     </div>
                     <div class="filter-group">
-                        <label for="endTime">Bitiş</label>
-                        <input type="time" id="endTime" class="filter-input" value="23:59">
+                        <label for="endTime">Bitiş Saati</label>
+                        <input type="time" id="endTime" class="filter-input" value="23:59" aria-label="Bitiş saati">
                     </div>
                 </div>
-                <button id="apply-filters" class="btn-primary">
-                    <ion-icon name="filter"></ion-icon>
+                <button id="apply-filters" class="btn-primary" aria-label="Filtreleri uygula">
+                    <ion-icon name="filter" aria-hidden="true"></ion-icon>
                     Filtrele
                 </button>
             </div>
 
+            <!-- Özet Kartları -->
             <div class="summary-cards">
                 <div class="stat-card">
-                    <div class="stat-icon"><ion-icon name="speedometer"></ion-icon></div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <ion-icon name="speedometer"></ion-icon>
+                    </div>
                     <div class="stat-info">
                         <div class="stat-value" id="total-distance">-</div>
-                        <div class="stat-label">Mesafe</div>
+                        <div class="stat-label">Toplam Mesafe</div>
                     </div>
                 </div>
+
                 <div class="stat-card">
-                    <div class="stat-icon"><ion-icon name="flash"></ion-icon></div>
+                    <div class="stat-icon" aria-hidden="true">
+                        <ion-icon name="flash"></ion-icon>
+                    </div>
                     <div class="stat-info">
                         <div class="stat-value" id="max-speed">-</div>
                         <div class="stat-label">Maks. Hız</div>
                     </div>
                 </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" aria-hidden="true">
+                        <ion-icon name="time"></ion-icon>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="drive-time">-</div>
+                        <div class="stat-label">Sürüş Süresi</div>
+                    </div>
+                </div>
+
+                <div class="stat-card">
+                    <div class="stat-icon" aria-hidden="true">
+                        <ion-icon name="stopwatch"></ion-icon>
+                    </div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="stop-count">0</div>
+                        <div class="stat-label">Duraklama</div>
+                    </div>
+                </div>
             </div>
 
+            <!-- Tab Navigasyon -->
             <div class="tab-navigation" role="tablist">
                 <button class="tab-btn active" data-tab="stops" role="tab" aria-selected="true">
                     <ion-icon name="location" aria-hidden="true"></ion-icon>
@@ -174,6 +165,7 @@
                 </button>
             </div>
 
+            <!-- Tab İçerikleri -->
             <div class="tab-content">
                 <!-- Duraklar Tab -->
                 <div id="stops-tab" class="tab-pane active" role="tabpanel">
@@ -188,33 +180,48 @@
                         <h4>Hız Limiti Analizi</h4>
                         <div class="speed-limit-control">
                             <label for="speedLimitSlider">Hız Limiti (km/s):</label>
-                            <input type="range" id="speedLimitSlider" min="30" max="120" value="60" step="5">
+                            <input type="range" id="speedLimitSlider" min="30" max="120" value="60" step="5"
+                                aria-label="Hız limiti ayarı">
                             <span id="speedLimitValue">60 km/s</span>
                         </div>
                         <div class="limit-stats">
                             <div class="limit-stat">
                                 <span class="stat-badge danger" id="exceed-count">0</span>
-                                <span>Limit Aşım Noktası</span>
+                                <span>Limit Aşımı</span>
                             </div>
-                        </div>
-                        <div class="analysis-tip">
-                            <ion-icon name="information-circle-outline"></ion-icon>
-                            <p>GPS titremeleri otomatik olarak filtrelenmiştir.</p>
+                            <div class="limit-stat">
+                                <span class="stat-badge warning" id="exceed-time">0sn</span>
+                                <span>Aşım Süresi</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </div>
 
+    <!-- Yükleme Overlay -->
     <div id="loading-overlay">
-        <div class="loading-spinner"></div>
-        <p>Veriler işleniyor...</p>
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p>Veriler yükleniyor...</p>
     </div>
 
-    <div id="toast-container"></div>
+    <!-- Toast Mesajları -->
+    <div id="toast-container" aria-live="polite"></div>
 
+    <!-- JS -->
     <script src="main.js"></script>
+    <script>
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('SW Registered'))
+                    .catch(err => console.log('SW Error', err));
+            });
+        }
+    </script>
 </body>
 
 </html>

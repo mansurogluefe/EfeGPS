@@ -10,12 +10,12 @@
     <!-- PWA -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#f2f2f7">
-    <link rel="apple-touch-icon" href="logo_v3.png">
+    <link rel="apple-touch-icon" href="assets/logo_v3.png">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="logo_v3.png">
+    <link rel="icon" type="image/png" href="assets/logo_v3.png">
 
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -367,16 +367,16 @@
         <div class="section-title">Harita İkonu</div>
         <div class="settings-card">
             <div class="icon-grid">
-                <div class="icon-option" data-icon="motor_icon.png">
-                    <img src="motor_icon.png" alt="Klasik">
+                <div class="icon-option" data-icon="assets/motor_icon.png">
+                    <img src="assets/motor_icon.png" alt="Klasik">
                     <span>Klasik</span>
                 </div>
-                <div class="icon-option" data-icon="motor_icon_v2.png">
-                    <img src="motor_icon_v2.png" alt="Modern">
+                <div class="icon-option" data-icon="assets/motor_icon_v2.png">
+                    <img src="assets/motor_icon_v2.png" alt="Modern">
                     <span>Sport</span>
                 </div>
-                <div class="icon-option" data-icon="motor_icon_v3.png">
-                    <img src="motor_icon_v3.png" alt="Premium">
+                <div class="icon-option" data-icon="assets/motor_icon_v3.png">
+                    <img src="assets/motor_icon_v3.png" alt="Premium">
                     <span>Premium</span>
                 </div>
             </div>
@@ -466,7 +466,7 @@
                 limitDisplay.textContent = `${speedSlider.value} km/s`;
 
                 // İkonu güncelle
-                const activeIcon = settings.vehicleIcon || 'motor_icon.png';
+                const activeIcon = settings.vehicleIcon || 'assets/motor_icon.png';
                 document.querySelectorAll('.icon-option').forEach(opt => {
                     if (opt.dataset.icon === activeIcon) {
                         opt.classList.add('active');
