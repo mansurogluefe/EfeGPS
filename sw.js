@@ -1,18 +1,19 @@
-const CACHE_NAME = 'efegps-v1';
+const CACHE_NAME = 'efegps-v3';
 const ASSETS = [
-  '/',
-  '/login.html',
-  '/anlık_takip.html',
-  '/rota_analiz.html',
-  '/style.css',
-  '/main.js',
-  '/config.js',
-  '/logo_v2.png',
+  './',
+  './index.html',
+  './login.html',
+  './anlık_takip.html',
+  './rota_analiz.html',
+  './settings.html',
+  './style.css',
+  './main.js',
+  './config.js',
+  './logo_v3.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
 ];
 
-// Install Service Worker
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
@@ -21,7 +22,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// Activate Service Worker
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -32,7 +32,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Strategy: Network First, then Cache
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request).catch(() => {
