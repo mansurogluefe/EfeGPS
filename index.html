@@ -1,9 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 
 <head>
     <meta charset="UTF-8">
-    <title>EfeGPS Redirector</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EfeGPS</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007aff">
+    <link rel="apple-touch-icon" href="logo_v3.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="logo_v3.png">
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="config.js"></script>
@@ -17,10 +30,45 @@
             }
         });
     </script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: #f2f2f7;
+            font-family: -apple-system, sans-serif;
+        }
+
+        .loading {
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+    </style>
 </head>
 
 <body>
-    <p>Yükleniyor...</p>
+    <div class="loading">
+        <img src="logo_v3.png" alt="EfeGPS" class="logo">
+        <p>EfeGPS Yükleniyor...</p>
+    </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js');
+            });
+        }
+    </script>
 </body>
 
 </html>
