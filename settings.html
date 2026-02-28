@@ -361,6 +361,18 @@
                     <span class="slider"></span>
                 </label>
             </div>
+            <div class="settings-item">
+                <div class="item-label">
+                    <div class="item-icon blue" style="background-color: rgba(90, 90, 90, 0.1); color: #555;">
+                        <ion-icon name="eye-off"></ion-icon>
+                    </div>
+                    <span>Gizlilik Modu (Görünmezlik)</span>
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="privacy-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
         </div>
         <p class="info-text">Kilidi açtığınızda cihazınızdaki fiziksel koruma özellikleri devre dışı kalır.</p>
 
@@ -442,7 +454,7 @@
         // Elements
         const lockSwitch = document.getElementById('lock-switch');
         const tiltSwitch = document.getElementById('tilt-switch');
-        const guestSwitch = document.getElementById('guest-switch');
+        const privacySwitch = document.getElementById('privacy-switch');
         const speedSlider = document.getElementById('speed-slider');
         const limitDisplay = document.getElementById('limit-display');
         const logDatePicker = document.getElementById('log-date-picker');
@@ -462,6 +474,7 @@
                 lockSwitch.checked = settings.isLocked || false;
                 tiltSwitch.checked = settings.isTiltAlertEnabled || false;
                 guestSwitch.checked = settings.isGuestModeEnabled || false;
+                privacySwitch.checked = settings.isPrivacyMode || false;
                 speedSlider.value = settings.speedLimit || 50;
                 limitDisplay.textContent = `${speedSlider.value} km/s`;
 
@@ -489,6 +502,7 @@
         lockSwitch.addEventListener('change', () => ayarlarRef.update({ isLocked: lockSwitch.checked }));
         tiltSwitch.addEventListener('change', () => ayarlarRef.update({ isTiltAlertEnabled: tiltSwitch.checked }));
         guestSwitch.addEventListener('change', () => ayarlarRef.update({ isGuestModeEnabled: guestSwitch.checked }));
+        privacySwitch.addEventListener('change', () => ayarlarRef.update({ isPrivacyMode: privacySwitch.checked }));
 
         speedSlider.addEventListener('input', () => {
             limitDisplay.textContent = `${speedSlider.value} km/s`;

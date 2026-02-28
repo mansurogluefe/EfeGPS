@@ -211,6 +211,18 @@
             animation: pulse 2.5s infinite;
         }
 
+        .privacy-indicator {
+            display: none;
+            align-items: center;
+            gap: 6px;
+            background: rgba(142, 142, 147, 0.15);
+            color: #1c1c1e;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
         .stats-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -325,9 +337,13 @@
                 <h2>Araç Durumu</h2>
                 <p id="last-update">Veri bekleniyor...</p>
             </div>
-            <div class="live-indicator">
+            <div class="live-indicator" id="live-badge">
                 <ion-icon name="radio"></ion-icon>
                 CANLI
+            </div>
+            <div class="privacy-indicator" id="privacy-badge">
+                <ion-icon name="eye-off"></ion-icon>
+                GİZLİ
             </div>
         </div>
 
@@ -431,6 +447,14 @@
                 const data = snapshot.val();
                 if (data) {
                     const { latitude, longitude, speed, bearing, lastUpdate } = data;
+
+                    // Gizlilik Modu Kontrolü
+                    database.ref('ayarlar/isPrivacyMode').on('value', (privacySnap) => {
+                        const isPrivacy = privacySnap.val() || false;
+                        document.getElementById('privacy-badge').style.display = isPrivacy ? 'flex' : 'none';
+                        document.getElementById('live-badge').style.display = isPrivacy ? 'none' : 'flex';
+                    });
+
                     const pos = [latitude, longitude];
                     lastLat = latitude;
                     lastLng = longitude;
