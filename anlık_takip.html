@@ -110,7 +110,19 @@
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
+            align-items: center;
+        }
+
+        @media (max-width: 380px) {
+            .brand span {
+                display: none;
+            }
+
+            .btn-pill-primary {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+            }
         }
 
         .icon-btn {
@@ -131,6 +143,32 @@
         .icon-btn:active {
             transform: scale(0.92);
             background: rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-pill-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+            white-space: nowrap;
+        }
+
+        .btn-pill-primary:active {
+            transform: scale(0.95);
+            background: var(--primary-dark);
+        }
+
+        .btn-pill-primary ion-icon {
+            font-size: 18px;
         }
 
         #status-card {
@@ -265,6 +303,10 @@
             <span>EfeGPS</span>
         </div>
         <div class="header-actions">
+            <button id="rota-btn" class="btn-pill-primary" aria-label="Rota Analizi">
+                <ion-icon name="map"></ion-icon>
+                <span>Rota Analiz</span>
+            </button>
             <button id="settings-btn" class="icon-btn" onclick="window.location.href='settings.html'"
                 aria-label="Ayarlar">
                 <ion-icon name="options-outline"></ion-icon>
@@ -300,15 +342,6 @@
             </div>
         </div>
 
-        <div class="action-btns">
-            <button id="rota-btn" class="btn-primary">
-                <ion-icon name="map-outline"></ion-icon>
-                Rota Analizi
-            </button>
-            <button id="share-btn" class="btn-secondary" aria-label="Paylaş">
-                <ion-icon name="share-outline" style="font-size: 22px;"></ion-icon>
-            </button>
-        </div>
     </div>
 
     <!-- Leaflet JS -->
@@ -426,17 +459,6 @@
                 window.location.href = 'rota_analiz.html';
             });
 
-            document.getElementById('share-btn').addEventListener('click', async () => {
-                if (navigator.share) {
-                    try {
-                        await navigator.share({
-                            title: 'EfeGPS Canlı Konum',
-                            text: 'Aracımın anlık konumunu takip et!',
-                            url: window.location.href
-                        });
-                    } catch (err) { }
-                }
-            });
 
             window.addEventListener('resize', () => map.invalidateSize());
         }

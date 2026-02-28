@@ -26,7 +26,7 @@ try {
 const database = firebase.database();
 
 // Global değişkenler
-let map, routeLayer, stopsLayer, analyticsChart;
+let map, routeLayer, stopsLayer;
 let speedGradientLayers = [];
 let currentPoints = [];
 let cachedLogData = null; // CSV verisini bellekte tutmak için
@@ -124,11 +124,6 @@ function setupEventListeners() {
     if (menuToggle) menuToggle.addEventListener('click', toggleSidebar);
     if (sidebarClose) sidebarClose.addEventListener('click', toggleSidebar);
 
-    // Theme toggle
-    const themeToggle = getElement('theme-toggle');
-    if (themeToggle) {
-        themeToggle.addEventListener('click', toggleTheme);
-    }
 
     // Quick date buttons
     setupQuickDateSelector();
@@ -314,26 +309,47 @@ function loadRoute(dateStr) {
         }
     }
 
-    // 1. Telefona "Dosyayı Telegram'a yükle" emri gönder
-    database.ref('log_isteği').set(true);
+    // 1. Telefona "Veriyi Veritabanına Yaz" emri gönder
+    database.ref('log_isteği').set({
+        active: true,
+        date: dateStr,
+        timestamp: Date.now()
+    });
 
-    // 2. Telefonun yükleyeceği file_id'yi Firebase'den beklemeye başla
-    const logRef = database.ref('motor_durumu/last_log_file_id');
+    // 2. Telefonun yükleyeceği last_log_content'i Firebase'den beklemeye başla
+    const logRef = database.ref('motor_durumu/last_log_content');
 
-    // 30 saniye içinde cevap gelmezse (cihaz çevrimdışıysa) durdur
+    // 25 saniye içinde cevap gelmezse (cihaz çevrimdışıysa) durdur
     const timeout = setTimeout(() => {
         logRef.off();
         hideLoading();
-        showToast('Cihaz yanıt vermedi. İnternet bağlantısını kontrol edin.', 'error');
-    }, 30000);
+        showToast('Cihaz yanıt vermedi. İnternet bağlantısını veya uygulamanın açık olduğunu kontrol edin.', 'error');
+    }, 25000);
 
     logRef.on('value', (snapshot) => {
-        const fileId = snapshot.val();
-        if (fileId) {
+        const logData = snapshot.val();
+        if (logData) {
             clearTimeout(timeout);
             logRef.off(); // Dinlemeyi kapat
-            showLoading('Dosya Telegram\'dan çekiliyor...');
-            fetchLogFromTelegram(fileId, dateStr);
+
+            showLoading('Veriler işleniyor...');
+
+            // Veriyi işle
+            cachedLogData = logData; // Belleğe al
+            const points = parseCSV(logData, dateStr);
+
+            if (points.length < 2) {
+                hideLoading();
+                showToast(`${dateStr} tarihine ait veri bulunamadı.`, 'warning');
+            } else {
+                updateMapWithPoints(points);
+                hideLoading();
+                showToast(`${points.length} konum noktası başarıyla yüklendi.`, 'success');
+            }
+
+            // --- KRİTİK: KOTA DOSTU TEMİZLİK ---
+            // Veriyi okuduk, artık veritabanında yer kaplamasına gerek yok. Siliyoruz.
+            database.ref('motor_durumu/last_log_content').set(null);
         }
     });
 }
@@ -482,8 +498,6 @@ function updateMapWithPoints(points) {
         // İstatistikleri hesapla
         calculateAndDisplayStats(points);
 
-        // Grafiği güncelle
-        updateChart(points);
 
         // Hız limit analizi
         updateSpeedLimitAnalysis(points);
@@ -724,12 +738,6 @@ function toggleSidebar() {
     }
 }
 
-function toggleTheme() {
-    const currentTheme = document.body.getAttribute('data-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-theme', newTheme);
-    showToast(`Tema ${newTheme === 'dark' ? 'koyu' : 'açık'} moda geçirildi`);
-}
 
 function formatDuration(ms) {
     if (!ms || ms < 0) return '0sn';
@@ -840,47 +848,7 @@ window.addEventListener('error', function (e) {
     showError('Bir hata oluştu');
 });
 
-// Telegram'dan dosyayı indirip okuyan fonksiyon
-async function fetchLogFromTelegram(fileId, targetDate) {
-    try {
-        // 1. Telegram'dan dosya bilgilerini al (Burası genellikle sorun çıkarmaz)
-        const fileInfoRes = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/getFile?file_id=${fileId}`);
-        const fileInfo = await fileInfoRes.json();
-
-        if (fileInfo.ok) {
-            const filePath = fileInfo.result.file_path;
-            const downloadUrl = `https://api.telegram.org/file/bot${BOT_TOKEN}/${filePath}`;
-
-            // --- CORS ÇÖZÜMÜ BAŞLANGICI ---
-            // Telegram'ın engeline takılmamak için dosyayı bir proxy (aracı) üzerinden indiriyoruz.
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(downloadUrl)}`;
-
-            const fileRes = await fetch(proxyUrl);
-            if (!fileRes.ok) throw new Error("Dosya indirme aracı başarısız oldu.");
-
-            const csvText = await fileRes.text();
-            cachedLogData = csvText; // Veriyi belleğe al
-            // --- CORS ÇÖZÜMÜ BİTİŞİ ---
-
-            const points = parseCSV(csvText, targetDate);
-
-            if (points.length < 2) {
-                hideLoading();
-                showToast(`${targetDate} tarihine ait veri bulunamadı.`, 'warning');
-                return;
-            }
-
-            // Mevcut harita fonksiyonuna veriyi pasla
-            updateMapWithPoints(points);
-            hideLoading();
-            showToast(`${points.length} konum noktası yüklendi.`, 'success');
-        }
-    } catch (error) {
-        console.error('Bridge Hatası:', error);
-        hideLoading();
-        showToast('Dosya çekilirken CORS engeline takıldı veya bağlantı koptu.', 'error');
-    }
-}
+// fetchLogFromTelegram fonksiyonu kaldırıldı, artık veriler doğrudan veritabanı üzerinden metin olarak aktarılıyor.
 
 // Log dosyasını (CSV) parçalayıp senin formatına sokan fonksiyon
 function parseCSV(csvText, targetDate) {
