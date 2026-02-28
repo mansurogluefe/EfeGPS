@@ -201,6 +201,80 @@
             color: var(--text-sub);
         }
 
+        /* Control Switches */
+        .control-section {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .control-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* iOS Style Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked+.slider {
+            background-color: var(--primary);
+        }
+
+        input:checked+.slider:before {
+            transform: translateX(20px);
+        }
+
+        .range-slider {
+            width: 100%;
+            margin-top: 5px;
+        }
+
         /* Info Card */
         #status-card {
             bottom: calc(20px + env(safe-area-inset-bottom));
@@ -367,6 +441,57 @@
                 <span class="icon-name">Araba 2</span>
             </div>
         </div>
+
+        <div class="control-section">
+            <div class="menu-title">Cihaz Kontrolleri</div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <ion-icon name="lock-closed-outline"></ion-icon>
+                    Motor Kilidi
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="lock-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <ion-icon name="warning-outline"></ion-icon>
+                    Sarsıntı Alarmı
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="tilt-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="control-item">
+                <div class="control-label">
+                    <ion-icon name="person-outline"></ion-icon>
+                    Misafir Modu
+                </div>
+                <label class="switch">
+                    <input type="checkbox" id="guest-switch">
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div style="margin-top: 10px;">
+                <div class="control-label" style="justify-content: space-between;">
+                    <span>Hız Limiti</span>
+                    <span id="limit-val" style="color: var(--primary); font-weight: bold;">50 km/s</span>
+                </div>
+                <input type="range" id="speed-slider" class="range-slider" min="20" max="120" step="5" value="50">
+            </div>
+
+            <button id="send-log-btn" class="btn-primary" style="margin-top: 15px; font-size: 0.8rem; padding: 10px;">
+                <ion-icon name="document-text-outline"></ion-icon>
+                Log Dosyasını İste
+            </button>
+        </div>
+
         <div style="margin-top: 15px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 10px;">
             <button id="logout-btn" class="btn-secondary" style="width: 100%; gap: 8px;">
                 <ion-icon name="log-out-outline"></ion-icon>
@@ -596,6 +721,46 @@
                 auth.signOut().then(() => {
                     window.location.href = 'login.html';
                 });
+            });
+
+            // --- Cihaz Kontrol Mantığı (Firebase Senkronizasyonu) ---
+            const ayarlarRef = database.ref('ayarlar');
+            const logReqRef = database.ref('log_isteği');
+
+            const lockSwitch = document.getElementById('lock-switch');
+            const tiltSwitch = document.getElementById('tilt-switch');
+            const guestSwitch = document.getElementById('guest-switch');
+            const speedSlider = document.getElementById('speed-slider');
+            const limitVal = document.getElementById('limit-val');
+            const sendLogBtn = document.getElementById('send-log-btn');
+
+            // Firebase'den mevcut ayarları oku
+            ayarlarRef.on('value', (snapshot) => {
+                const settings = snapshot.val();
+                if (settings) {
+                    lockSwitch.checked = settings.isLocked || false;
+                    tiltSwitch.checked = settings.isTiltAlertEnabled || false;
+                    guestSwitch.checked = settings.isGuestModeEnabled || false;
+                    speedSlider.value = settings.speedLimit || 50;
+                    limitVal.textContent = `${speedSlider.value} km/s`;
+                }
+            });
+
+            // Web'den yapılan değişiklikleri Firebase'e yaz
+            lockSwitch.addEventListener('change', () => ayarlarRef.update({ isLocked: lockSwitch.checked }));
+            tiltSwitch.addEventListener('change', () => ayarlarRef.update({ isTiltAlertEnabled: tiltSwitch.checked }));
+            guestSwitch.addEventListener('change', () => ayarlarRef.update({ isGuestModeEnabled: guestSwitch.checked }));
+
+            speedSlider.addEventListener('input', () => {
+                limitVal.textContent = `${speedSlider.value} km/s`;
+            });
+            speedSlider.addEventListener('change', () => {
+                ayarlarRef.update({ speedLimit: parseInt(speedSlider.value) });
+            });
+
+            sendLogBtn.addEventListener('click', () => {
+                logReqRef.setValue(true);
+                alert('Log dosyası isteği cihaza gönderildi!');
             });
         }
     </script>
