@@ -1,16 +1,7 @@
-// Firebase ayarları
-// Firebase ayarları - Bunların LocationService.kt içindekiyle aynı olduğundan emin ol
-const firebaseConfig = {
-    apiKey: "AIzaSyBt3WGvcD1-KJgf6FmW4ngnLSjyNSfc-88",
-    authDomain: "efegps-f38f0.firebaseapp.com",
-    databaseURL: "https://efegps-f38f0-default-rtdb.firebaseio.com",
-    projectId: "efegps-f38f0",
-    storageBucket: "efegps-f38f0.appspot.com",
-    messagingSenderId: "266569948357",
-    appId: "1:266569948357:web:f8b3f64ecfecbdabfe64ac"
-};
-
-const BOT_TOKEN = "7739075002:AAEpEvduB6kSgdjtb9LogBdHIVBVFRDherw"; // Bridge için gerekli
+// Yapılandırma config.js dosyasından okunmaktadır.
+if (typeof CONFIG === 'undefined') {
+    console.error('Yapılandırma dosyası (config.js) yüklenemedi!');
+}
 
 // DOM elementleri - NULL kontrolü ile
 function getElement(id) {
