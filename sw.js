@@ -1,4 +1,4 @@
-const CACHE_NAME = 'efegps-v5';
+const CACHE_NAME = 'efegps-v1.155';
 const ASSETS = [
   './',
   './index.html',
