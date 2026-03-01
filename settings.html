@@ -308,7 +308,7 @@
     </style>
 </head>
 
-<body>
+<body style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;">
 
     <header>
         <div class="header-top">
@@ -537,7 +537,12 @@
 
         // Auth Guard
         auth.onAuthStateChanged((user) => {
-            if (!user) window.location.href = 'login.html';
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                document.body.style.opacity = '1';
+                document.body.style.pointerEvents = 'auto';
+            }
         });
     </script>
 </body>

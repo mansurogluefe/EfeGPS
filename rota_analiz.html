@@ -41,6 +41,13 @@
         auth.onAuthStateChanged((user) => {
             if (!user) {
                 window.location.href = 'login.html';
+            } else {
+                // Auth onaylandı, içeriği göster ve uygulamayı başlat
+                document.body.classList.remove('auth-hidden');
+                document.body.classList.add('auth-verified');
+                if (typeof initializeApp === 'function') {
+                    initializeApp();
+                }
             }
         });
     </script>
@@ -50,7 +57,7 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
 
-<body data-theme="light">
+<body class="auth-hidden" data-theme="light">
 
     <!-- Mobil Header -->
     <div id="mobile-header" class="glass-panel">

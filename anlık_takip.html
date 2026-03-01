@@ -307,7 +307,7 @@
     </style>
 </head>
 
-<body>
+<body style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;">
 
     <header class="glass-panel">
         <div class="brand">
@@ -375,6 +375,9 @@
             if (!user) {
                 window.location.href = 'login.html';
             } else {
+                // Auth onaylandı, içeriği göster ve uygulamayı başlat
+                document.body.style.opacity = '1';
+                document.body.style.pointerEvents = 'auto';
                 startApp();
             }
         });

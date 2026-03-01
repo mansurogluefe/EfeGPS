@@ -1,3 +1,15 @@
+/* Auth Protection */
+body.auth-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+
+body.auth-verified {
+    opacity: 1;
+    pointer-events: auto;
+}
+
 :root {
     --primary: #007aff;
     --primary-dark: #0056b3;

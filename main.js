@@ -19,8 +19,8 @@ let speedGradientLayers = [];
 let currentPoints = [];
 let cachedLogData = null;
 
-// Sayfa yüklendiğinde
-document.addEventListener('DOMContentLoaded', initializeApp);
+// Sayfa yüklendiğinde (OTOMATİK BAŞLATMA KALDIRILDI - Auth sonrası HTML içinden çağrılacak)
+// document.addEventListener('DOMContentLoaded', initializeApp);
 
 function initializeApp() {
     initializeMap();
