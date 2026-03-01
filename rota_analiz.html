@@ -36,22 +36,6 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
 
-    <script>
-        const auth = firebase.auth();
-        auth.onAuthStateChanged((user) => {
-            if (!user) {
-                window.location.href = 'login.html';
-            } else {
-                // Auth onaylandı, içeriği göster ve uygulamayı başlat
-                document.body.classList.remove('auth-hidden');
-                document.body.classList.add('auth-verified');
-                if (typeof initializeApp === 'function') {
-                    initializeApp();
-                }
-            }
-        });
-    </script>
-
     <!-- Ionicons -->
     <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
@@ -222,6 +206,20 @@
     <div id="toast-container"></div>
 
     <script src="main.js"></script>
+    <script>
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                // Auth onaylandı, içeriği göster ve uygulamayı başlat
+                document.body.classList.remove('auth-hidden');
+                document.body.classList.add('auth-verified');
+                if (typeof initializeApp === 'function') {
+                    initializeApp();
+                }
+            }
+        });
+    </script>
 </body>
 
 </html>
