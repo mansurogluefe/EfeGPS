@@ -41,7 +41,7 @@
     <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
 </head>
 
-<body class="auth-hidden" data-theme="light">
+<body style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;" data-theme="light">
 
     <!-- Mobil Header -->
     <div id="mobile-header" class="glass-panel">
@@ -212,10 +212,12 @@
                 window.location.href = 'login.html';
             } else {
                 // Auth onaylandı, içeriği göster ve uygulamayı başlat
-                document.body.classList.remove('auth-hidden');
-                document.body.classList.add('auth-verified');
+                document.body.style.opacity = '1';
+                document.body.style.pointerEvents = 'auto';
                 if (typeof initializeApp === 'function') {
                     initializeApp();
+                } else {
+                    console.error('initializeApp bulunamadı!');
                 }
             }
         });
