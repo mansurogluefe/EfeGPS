@@ -354,7 +354,7 @@
             </div>
             <div class="stat-item">
                 <span class="stat-label">Bağlantı</span>
-                <span class="stat-value" style="font-size: 1.1rem;">Aktif</span>
+                <span class="stat-value" id="connection-status" style="font-size: 1.1rem; color: #24b24b;">Aktif</span>
             </div>
         </div>
 
@@ -446,25 +446,74 @@
             let lastLng = initialLng;
 
             const motorRef = database.ref('motor_durumu');
+
+            function updateConnectionUI(lastUpdate) {
+                const now = Date.now();
+                const diff = now - lastUpdate;
+                const fiveMinutes = 5 * 60 * 1000;
+
+                const connectionStatus = document.getElementById('connection-status');
+                const liveBadge = document.getElementById('live-badge');
+                const privacyBadge = document.getElementById('privacy-badge');
+                const isPrivacyMode = privacyBadge && privacyBadge.style.display === 'flex';
+
+                if (diff > fiveMinutes) {
+                    if (connectionStatus) {
+                        connectionStatus.textContent = "Pasif";
+                        connectionStatus.style.color = "#8e8e93";
+                    }
+                    if (liveBadge) liveBadge.style.display = "none";
+                } else {
+                    if (connectionStatus) {
+                        connectionStatus.textContent = "Aktif";
+                        connectionStatus.style.color = "#24b24b";
+                    }
+                    if (liveBadge && !isPrivacyMode) {
+                        liveBadge.style.display = "flex";
+                    }
+                }
+            }
+
+            // Gizlilik Modu Kontrolü
+            database.ref('ayarlar/isPrivacyMode').on('value', (privacySnap) => {
+                const isPrivacy = privacySnap.val() || false;
+                const privacyBadge = document.getElementById('privacy-badge');
+                const liveBadge = document.getElementById('live-badge');
+
+                if (privacyBadge) privacyBadge.style.display = isPrivacy ? 'flex' : 'none';
+
+                // CANLI rozeti sadece gizlilik modu kapalıyken VE bağlantı aktifken gösterilmeli
+                if (isPrivacy && liveBadge) {
+                    liveBadge.style.display = 'none';
+                } else if (!isPrivacy && liveBadge) {
+                    // Bağlantı durumuna göre tekrar kontrol et
+                    motorRef.once('value').then(snap => {
+                        const data = snap.val();
+                        if (data && data.lastUpdate) updateConnectionUI(data.lastUpdate);
+                    });
+                }
+            });
+
             motorRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 if (data) {
                     const { latitude, longitude, speed, bearing, lastUpdate } = data;
 
-                    // Gizlilik Modu Kontrolü
-                    database.ref('ayarlar/isPrivacyMode').on('value', (privacySnap) => {
-                        const isPrivacy = privacySnap.val() || false;
-                        document.getElementById('privacy-badge').style.display = isPrivacy ? 'flex' : 'none';
-                        document.getElementById('live-badge').style.display = isPrivacy ? 'none' : 'flex';
-                    });
-
                     const pos = [latitude, longitude];
                     lastLat = latitude;
                     lastLng = longitude;
 
-                    document.getElementById('speed').textContent = Math.round(speed || 0);
-                    const date = new Date(lastUpdate);
-                    document.getElementById('last-update').textContent = `Güncellendi: ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+                    const speedEl = document.getElementById('speed');
+                    const lastUpdateEl = document.getElementById('last-update');
+
+                    if (speedEl) speedEl.textContent = Math.round(speed || 0);
+                    if (lastUpdateEl) {
+                        const date = new Date(lastUpdate);
+                        lastUpdateEl.textContent = `Güncellendi: ${date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`;
+                    }
+
+                    // Bağlantı durumunu güncelle
+                    updateConnectionUI(lastUpdate);
 
                     if (motorMarker) {
                         motorMarker.setLatLng(pos);
@@ -478,6 +527,16 @@
                 }
             });
 
+            // Her dakika bağlantı durumunu kontrol et (yeni veri gelmese bile)
+            setInterval(() => {
+                motorRef.once('value').then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.lastUpdate) {
+                        updateConnectionUI(data.lastUpdate);
+                    }
+                });
+            }, 60000);
+
             document.getElementById('recenter-btn').addEventListener('click', () => {
                 map.flyTo([lastLat, lastLng], 17, { duration: 1.2 });
             });
@@ -485,7 +544,6 @@
             document.getElementById('rota-btn').addEventListener('click', () => {
                 window.location.href = 'rota_analiz.html';
             });
-
 
             window.addEventListener('resize', () => map.invalidateSize());
         }
