@@ -281,7 +281,7 @@
     <script>
         // --- KRİTİK AYARLAR ---
         // Tailscale IP adresini veya yerel IP'yi buraya yaz (Başına https:// veya http:// koymadan)
-        const LOCAL_IP = "100.85.33.118";
+        const LOCAL_IP = "https://laptop-vu63um9k.taile4483b.ts.net";
 
         // Dify API Anahtarını buraya yapıştır (Dify -> API Erişimi -> Yeni Anahtar)
         const API_KEY = "app-oe0Pbp2x2YJHTVHYKfHldBv1";
@@ -356,7 +356,9 @@
             sendBtn.disabled = true;
 
             // Dify Chatbot (Sohbet Akışı) API Uç Noktası
-            const url = `http://${LOCAL_IP}/v1/chat-messages`;
+            // Kullanıcı IP başına https koysa bile hatayı engellemek için temizliyoruz:
+            let baseIP = LOCAL_IP.replace(/^https?:\/\//, '').replace(/\/$/, '');
+            const url = `https://${baseIP}/v1/chat-messages`;
 
             const payload = {
                 "inputs": {}, // Chatbot modunda genel ekstra değişkenler buraya yazılır
