@@ -3,119 +3,192 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mansur_AI | Uzmanlar Konseyi</title>
+    <!-- PWA & iOS SafeArea Optimization -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Çıraklar">
+    <title>Mansur'un Çırakları</title>
+    
+    <!-- iOS Touch Icon (iPhone Ana Ekran İkonu) -->
+    <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Apple_logo_black.svg/512px-Apple_logo_black.svg.png">
+
     <!-- Markdown ve XSS Güvenlik Kütüphaneleri -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+    
     <style>
         :root {
-            --bg-color: #1a1a1a;
-            --chat-bg: #2d2d2d;
-            --text-color: #e0e0e0;
-            --user-msg-bg: #2563eb;
-            --bot-msg-bg: #3f3f3f;
-            --accent-color: #3b82f6;
-            --border-color: #444;
+            /* Premium iOS Broken-Gray / Off-White Theme */
+            --bg-color: #F5F5F7; /* Apple'ın Orijinal Kırık Gri Arka Planı */
+            --glass-bg: rgba(255, 255, 255, 0.85); /* Tok Buzlu Cam */
+            --border-glass: rgba(0, 0, 0, 0.05); /* Aşırı İnce Cam Kenarlığı */
+            --text-main: #1D1D1F; /* Göz Yormayan Siyaha Yakın Tok Gri */
+            --text-muted: #86868B;
+            --bot-msg-bg: #FFFFFF;
+            --user-msg-gradient: linear-gradient(135deg, #007AFF 0%, #0056B3 100%); /* Orjinal iMessage Rengi */
+            --accent-color: #007AFF;
+            --shadow-soft: 0 4px 20px rgba(0, 0, 0, 0.05); /* Yüzer Kağıt Gölgelendirmesi */
+            --shadow-btn: 0 4px 14px rgba(0, 122, 255, 0.35);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
+            /* Ekranın en üstünden hafife yayılan gizli bir premium beyaz zerafet ışığı */
+            background-image: radial-gradient(circle at 50% 0%, rgba(255,255,255,0.8) 0%, transparent 60%);
+            background-attachment: fixed;
+            color: var(--text-main);
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            /* Ekranın yukarıya kayıp altının boşalmasını engeller */
+            overflow: hidden;
+            -webkit-overflow-scrolling: touch; 
         }
 
-        /* Header */
+        /* Yüzer Glass Header */
         header {
-            background-color: var(--chat-bg);
-            padding: 15px 20px;
-            border-bottom: 1px solid var(--border-color);
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            padding: calc(env(safe-area-inset-top) + 16px) 24px 16px;
+            border-bottom: 0.5px solid var(--border-glass);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            z-index: 100;
+            position: relative;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+        }
+
+        .header-title-box {
+            display: flex;
+            flex-direction: column;
         }
 
         header h1 {
             margin: 0;
-            font-size: 1.2rem;
-            color: var(--accent-color);
-            margin-bottom: 4px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: var(--text-main);
         }
 
         .status {
             display: flex;
             align-items: center;
             font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-top: 4px;
+            letter-spacing: -0.01em;
         }
 
         .status-dot {
-            height: 10px;
-            width: 10px;
-            background-color: #10b981;
+            height: 8px;
+            width: 8px;
+            background-color: #34C759;
             border-radius: 50%;
-            margin-right: 8px;
+            margin-right: 6px;
+            box-shadow: 0 0 10px rgba(52, 199, 89, 0.5);
+            transition: all 0.4s ease;
         }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
+        .status-dot.offline {
+            background-color: #FF3B30;
+            box-shadow: 0 0 10px rgba(255, 59, 48, 0.5);
+        }
+        
+        .status-dot.sending {
+            background-color: #0A84FF;
+            box-shadow: 0 0 10px rgba(10, 132, 255, 0.5);
         }
 
+        /* Apple Tarzı Premium Kapsül (Pill) Buton */
         .icon-btn {
-            background-color: transparent;
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.04);
+            color: var(--accent-color);
+            border: 1px solid rgba(0,0,0,0.02);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 0.85rem;
-            transition: background-color 0.2s;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            letter-spacing: -0.01em;
         }
 
         .icon-btn:hover {
-            background-color: #444;
+            background: rgba(0, 0, 0, 0.07);
+            transform: translateY(-1px);
+        }
+
+        .icon-btn:active {
+            transform: scale(0.95);
+            background: rgba(0, 0, 0, 0.1);
         }
 
         /* Chat Area */
         #chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 24px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 18px;
             scroll-behavior: smooth;
+            /* Flex elemanını her zaman tabana oturtmayı garantiler */
+            width: 100%;
         }
 
         .message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            line-height: 1.5;
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 22px;
+            font-size: 0.98rem;
+            line-height: 1.45;
             position: relative;
             word-wrap: break-word;
+            box-shadow: var(--shadow-soft);
+            animation: fadeIn 0.3s cubic-bezier(0.25, 0.8, 0.2, 1);
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Kullanıcı Modu (iMessage Tipi Mavi) */
         .user-message {
             align-self: flex-end;
-            background-color: var(--user-msg-bg);
+            background: var(--user-msg-gradient);
             color: white;
             border-bottom-right-radius: 4px;
         }
 
+        /* Yapay Zeka Modu (Soft Kart Tipi) */
         .bot-message {
             align-self: flex-start;
             background-color: var(--bot-msg-bg);
+            color: var(--text-main);
             border-bottom-left-radius: 4px;
-            border: 1px solid #444;
         }
 
-        /* Bot Mesaj İçi Markdown Stilleri */
         .msg-content p {
             margin: 0 0 8px 0;
         }
@@ -125,124 +198,154 @@
         }
 
         .msg-content pre {
-            background-color: #1a1a1a;
+            background-color: #2C2C2E;
+            color: #EBEBF5;
             padding: 12px;
-            border-radius: 8px;
+            border-radius: 12px;
             overflow-x: auto;
-            border: 1px solid #333;
             margin: 8px 0;
-        }
-
-        .msg-content code {
-            font-family: 'Courier New', Courier, monospace;
-            background-color: #1a1a1a;
-            padding: 2px 5px;
-            border-radius: 4px;
             font-size: 0.9em;
         }
 
+        .msg-content code {
+            font-family: 'SF Mono', ui-monospace, Menlo, Monaco, monospace;
+            background-color: rgba(142, 142, 147, 0.15);
+            padding: 2px 6px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .user-message .msg-content code {
+            background-color: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
         .msg-content a {
-            color: #60a5fa;
+            color: var(--accent-color);
+            text-decoration: none;
+        }
+
+        .user-message .msg-content a {
+            color: white;
+            text-decoration: underline;
         }
 
         .source-tag {
-            font-weight: bold;
-            color: var(--accent-color);
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
             margin-bottom: 6px;
-            display: inline-block;
-            font-size: 0.8rem;
-            background: rgba(59, 130, 246, 0.1);
-            padding: 2px 8px;
-            border-radius: 4px;
+            display: block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        /* Animasyon */
+        /* Yükleniyor Animasyonu */
         .typing-indicator {
-            font-style: italic;
-            color: #888;
-            font-size: 0.85rem;
-            margin-left: 10px;
+            align-self: flex-start;
+            background-color: var(--bot-msg-bg);
+            padding: 14px 20px;
+            border-radius: 22px;
+            border-bottom-left-radius: 4px;
+            box-shadow: var(--shadow-soft);
             display: flex;
             align-items: center;
+            gap: 6px;
+            animation: fadeIn 0.3s;
         }
 
-        .typing-dots::after {
-            content: '';
-            animation: dots 1.5s steps(5, end) infinite;
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--text-muted);
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
         }
 
-        @keyframes dots {
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
 
-            0%,
-            20% {
-                content: '';
-            }
-
-            40% {
-                content: '.';
-            }
-
-            60% {
-                content: '..';
-            }
-
-            80%,
-            100% {
-                content: '...';
-            }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
         }
 
-        /* Input Area */
+        /* Input Area (Safe Area Korumalı Glassmorphism) */
+        #input-wrapper {
+            background-color: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 0.5px solid var(--border-glass);
+            /* Safe area padding iOS alt çentik engellemesi */
+            padding: 12px 20px calc(env(safe-area-inset-bottom) + 12px); 
+        }
+
         #input-area {
-            background-color: var(--chat-bg);
-            padding: 15px 20px;
-            border-top: 1px solid var(--border-color);
             display: flex;
-            gap: 12px;
             align-items: flex-end;
+            gap: 12px;
+            background-color: var(--bot-msg-bg);
+            border-radius: 24px;
+            padding: 6px 6px 6px 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+            border: 1px solid var(--border-glass);
+            transition: border-color 0.3s;
+        }
+
+        #input-area:focus-within {
+            border-color: var(--accent-color);
         }
 
         #user-input {
             flex: 1;
-            background-color: #1a1a1a;
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 1rem;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            font-size: 1.05rem;
             outline: none;
             resize: none;
-            /* Manuel boyutu kapat, JS halledecek */
             min-height: 24px;
-            max-height: 150px;
+            max-height: 120px;
             font-family: inherit;
             line-height: 1.4;
+            padding: 8px 0;
+            margin: 4px 0;
         }
 
-        #user-input:focus {
-            border-color: var(--accent-color);
+        #user-input::placeholder {
+            color: var(--text-muted);
         }
 
         #send-btn {
-            background-color: var(--accent-color);
+            background: var(--accent-color);
             color: white;
             border: none;
-            padding: 14px 24px;
-            border-radius: 8px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             cursor: pointer;
-            font-weight: bold;
-            transition: all 0.2s;
-            height: 48px;
-            /* Input'un standart yüksekliğiyle hizalı */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: var(--shadow-btn);
+            flex-shrink: 0;
         }
 
-        #send-btn:hover {
-            background-color: #2563eb;
-            transform: translateY(-1px);
+        #send-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+            transform: translateY(-1px) translateX(1px); /* Görsel Dengeleme */
+        }
+
+        #send-btn:active {
+            transform: scale(0.9);
         }
 
         #send-btn:disabled {
-            background-color: #555;
+            background-color: var(--text-muted);
+            box-shadow: none;
             cursor: not-allowed;
             transform: none;
         }
@@ -252,38 +355,37 @@
 <body>
 
     <header>
-        <div>
-            <h1>Mansur_AI | Uzmanlar Konseyi</h1>
+        <div class="header-title-box">
+            <h1>Mansur'un Çırakları</h1>
             <div class="status">
-                <div class="status-dot"></div>
-                Sistem Aktif (Tailscale Üzerinden)
+                <div class="status-dot" id="network-dot"></div>
+                <span id="network-text">Sistem Bağlanıyor...</span>
             </div>
         </div>
         <div class="action-buttons">
-            <button id="clear-btn" class="icon-btn">Sohbeti Temizle</button>
+            <button id="clear-btn" class="icon-btn">Temizle</button>
         </div>
     </header>
 
     <div id="chat-container">
-        <div class="message bot-message">
-            <span class="source-tag">[Sistem]</span>
-            <div class="msg-content">Merhaba Efe, Mansur_AI sistemi aktif. Hangi konuda araştırma veya teknik analiz
-                yapmamı istersin?</div>
+        <div class="message bot-message" style="animation: none;">
+            <span class="source-tag">Sistem</span>
+            <div class="msg-content">Hoş geldin. Sana nasıl yardımcı olabilirim?</div>
         </div>
     </div>
 
-    <div id="input-area">
-        <textarea id="user-input" rows="1"
-            placeholder="Mesajınızı yazın... (Satır atlamak için Shift+Enter)"></textarea>
-        <button id="send-btn">Gönder</button>
+    <div id="input-wrapper">
+        <div id="input-area">
+            <textarea id="user-input" rows="1" placeholder="Soru veya emir yazın..."></textarea>
+            <button id="send-btn" title="Gönder">
+                <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+            </button>
+        </div>
     </div>
 
     <script>
         // --- KRİTİK AYARLAR ---
-        // Tailscale IP adresini veya yerel IP'yi buraya yaz (Başına https:// veya http:// koymadan)
         const LOCAL_IP = "https://laptop-vu63um9k.taile4483b.ts.net";
-
-        // Dify API Anahtarını buraya yapıştır (Dify -> API Erişimi -> Yeni Anahtar)
         const API_KEY = "app-oe0Pbp2x2YJHTVHYKfHldBv1";
         // -----------------------
 
@@ -291,10 +393,26 @@
         const userInput = document.getElementById('user-input');
         const sendBtn = document.getElementById('send-btn');
         const clearBtn = document.getElementById('clear-btn');
+        const networkDot = document.getElementById('network-dot');
+        const networkText = document.getElementById('network-text');
 
         let isTyping = false;
 
-        // XSS Önlemi: Düz metinleri güvenilir hale getirir
+        // --- AKTİFLİK DURUMU / NETWORK Check ---
+        function updateNetworkStatus() {
+            if (navigator.onLine) {
+                networkDot.className = 'status-dot';
+                networkText.textContent = "Sistem Aktif";
+            } else {
+                networkDot.className = 'status-dot offline';
+                networkText.textContent = "Bağlantı Yok!";
+            }
+        }
+        window.addEventListener('online', updateNetworkStatus);
+        window.addEventListener('offline', updateNetworkStatus);
+        updateNetworkStatus(); 
+
+        // XSS Önlemi
         function escapeHTML(str) {
             if (!str) return str;
             return str.replace(/[&<>'"]/g,
@@ -314,55 +432,70 @@
             messageDiv.classList.add('message', sender === 'user' ? 'user-message' : 'bot-message');
 
             let messageHTML = '';
-            if (source) {
+            
+            // Eğer kaynak belirtilmişse (sadece bot için vizüel)
+            if (source && sender === 'bot') {
                 messageHTML += `<span class="source-tag">${escapeHTML(source)}</span>`;
             }
 
             if (sender === 'bot') {
-                // Bot yanıtını Markdown olarak çevirip DomPurify ile zararlı kodlardan arındır
                 const htmlContent = marked.parse(text);
                 const pureHTML = DOMPurify.sanitize(htmlContent);
                 messageHTML += `<div class="msg-content">${pureHTML}</div>`;
             } else {
-                // Kullanıcı yanıtı sadece text olarak ve satır atlamaları korunarak basılır
                 messageHTML += `<div class="msg-content" style="white-space: pre-wrap;">${escapeHTML(text)}</div>`;
             }
 
             messageDiv.innerHTML = messageHTML;
             chatContainer.appendChild(messageDiv);
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 10);
         }
 
-        // Yükleniyor Göstergesi
-        function toggleTyping() {
+        function toggleTyping(forceRemove = false) {
+            const existingTyping = document.getElementById('typing-indicator');
+            if (forceRemove || existingTyping) {
+                if (existingTyping) existingTyping.remove();
+                isTyping = false;
+                networkDot.className = 'status-dot'; // Mavi islem isigini yesile dondur
+                networkText.textContent = "Sistem Aktif";
+                return;
+            }
+
             if (!isTyping) {
                 const typingDiv = document.createElement('div');
                 typingDiv.id = 'typing-indicator';
                 typingDiv.classList.add('typing-indicator');
-                typingDiv.innerHTML = `Konsey düşünüyor<span class="typing-dots"></span>`;
+                typingDiv.innerHTML = `<span class="source-tag" style="margin-bottom:0; align-self:center;">...</span>`;
+                
+                // Nokta animasyonu ekleme
+                typingDiv.innerHTML = `<div class="dot"></div><div class="dot"></div><div class="dot"></div>`;
+                
                 chatContainer.appendChild(typingDiv);
                 isTyping = true;
-            } else {
-                const typingDiv = document.getElementById('typing-indicator');
-                if (typingDiv) typingDiv.remove();
-                isTyping = false;
+                
+                networkDot.className = 'status-dot sending'; // Islem gerceklesiyor yesili mavi yap
+                networkText.textContent = "Sentezleniyor...";
             }
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            setTimeout(() => { chatContainer.scrollTop = chatContainer.scrollHeight; }, 10);
         }
 
         // --- DIFY API BAĞLANTISI ---
         async function sendMessageToDify(message) {
+            if (!navigator.onLine) {
+                addMessage("Cihazınızda internet bağlantısı bulunamadı. Lütfen Wi-Fi/Hücresel veriyi kontrol edip tekrar deneyin.", 'bot', 'Ağ Hatası');
+                return;
+            }
+
             toggleTyping();
             sendBtn.disabled = true;
 
-            // Dify Chatbot (Sohbet Akışı) API Uç Noktası
-            // Kullanıcı IP başına https koysa bile hatayı engellemek için temizliyoruz:
             let baseIP = LOCAL_IP.replace(/^https?:\/\//, '').replace(/\/$/, '');
             const url = `https://${baseIP}/v1/chat-messages`;
 
             const payload = {
-                "inputs": {}, // Chatbot modunda genel ekstra değişkenler buraya yazılır
-                "query": message, // Asıl soru doğrudan query köküne yazılır
+                "inputs": {}, 
+                "query": message, 
                 "response_mode": "blocking",
                 "user": "Efe_Admin"
             };
@@ -383,26 +516,20 @@
                         const errorData = await response.json();
                         errorDetail = errorData.message || errorData.code || JSON.stringify(errorData);
                     } catch (e) {
-                        try {
-                            errorDetail = await response.text();
-                        } catch (err) { }
+                         try { errorDetail = await response.text(); } catch (err) { }
                     }
-                    throw new Error(`Dify Sunucu Reddi: ${errorDetail}`);
+                    throw new Error(`Dify Reddi: ${errorDetail}`);
                 }
 
                 const data = await response.json();
+                let botResponse = data.answer || "⚠️ API Başarılı, boş veri geldi.";
 
-                // Dify Sohbet/Chatflow modunda gelen cevap doğrudan "answer" içinde yer alır
-                let botResponse = data.answer || "⚠️ API bağlantısı sağlandı ancak bot tarafından boş (null) bir cevap döndü.";
-
-                // Dify 'Sentez' kaynaklarını ayıklamak 
-                let source = "[Kaynak: Sentez]";
+                let source = "[Sentez]";
                 let cleanText = botResponse;
-
-                // Cevapta köşeli parantezli bir kaynak formatı (Örn: [Kaynak: Web]) geçiyorsa bul ve ayır
+                
                 const sourceMatch = typeof botResponse === 'string' ? botResponse.match(/^\[Kaynak:\s*([^\]]+)\]/i) : null;
                 if (sourceMatch) {
-                    source = `[Kaynak: ${sourceMatch[1]}]`;
+                    source = `[${sourceMatch[1]}]`;
                     cleanText = botResponse.replace(sourceMatch[0], '').trim();
                 }
 
@@ -410,12 +537,12 @@
 
             } catch (error) {
                 console.error("Fetch Hatası:", error);
-                const errText = "Sistem hatası: Sunucuya ulaşılamadı. Tailscale VPN bağlantısının açık olduğundan ve Dify API keyinin doğruluğundan emin ol. Detay: " + error.message;
-                addMessage(errText, 'bot', '[Hata]');
+                addMessage(`Bağlantı Hatası veya Model Reddi:\n${error.message}`, 'bot', 'Hata Bildirimi');
             } finally {
-                toggleTyping();
+                toggleTyping(true); // Parametreyle zorla kapat
                 sendBtn.disabled = false;
-                userInput.focus();
+                // Mobil klavye odaklanması
+                setTimeout(() => userInput.focus(), 50);
             }
         }
 
@@ -424,7 +551,7 @@
             if (message && !isTyping) {
                 addMessage(message, 'user');
                 userInput.value = '';
-                userInput.style.height = 'auto'; // Gönderince yüksekliği sıfırla
+                userInput.style.height = 'auto'; 
                 sendMessageToDify(message);
             }
         }
@@ -439,16 +566,17 @@
             }
         });
 
-        // Textarea otomatik genişletme
         userInput.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
 
         clearBtn.addEventListener('click', () => {
-            if (confirm("Tüm sohbet geçmişi silinsin mi?")) {
+             // iPhone için Haptic feedback/titreme (destekleyen tarayıcılarda)
+            if (navigator.vibrate) navigator.vibrate(50);
+            
+            if (confirm("Ekran temizlenecek, emin misiniz?")) {
                 chatContainer.innerHTML = '';
-                addMessage('Sohbet temizlendi. Yeni bir soru sorabilirsin.', 'bot', '[Sistem]');
             }
         });
 
