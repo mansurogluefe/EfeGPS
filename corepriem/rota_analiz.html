@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EfeGPS - Rota Analizi</title>
+
+    <!-- PWA -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#007aff">
+    <link rel="apple-touch-icon" href="assets/logo_v3.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/logo_v3.png">
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecorator@1.6.0/dist/leaflet.polylineDecorator.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+
+    <!-- Configuration -->
+    <script src="config.js"></script>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+
+    <!-- Ionicons -->
+    <script type="module" src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"></script>
+</head>
+
+<body style="opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out;" data-theme="light">
+
+    <!-- Mobil Header -->
+    <div id="mobile-header" class="glass-panel">
+        <div class="header-left">
+            <button class="back-btn-nav" onclick="window.location.href='anlık_takip.html'" aria-label="Haritaya dön">
+                <ion-icon name="chevron-back-outline"></ion-icon>
+                <span>Harita</span>
+            </button>
+            <div class="brand">
+                <img src="assets/logo_v3.png" alt="Logo">
+                <span>EfeGPS</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <button id="menu-toggle" class="icon-btn" aria-label="Menüyü aç">
+                <ion-icon name="menu-outline" aria-hidden="true"></ion-icon>
+            </button>
+        </div>
+    </div>
+
+    <!-- Ana Harita -->
+    <div id="map" aria-label="Harita"></div>
+
+    <!-- DURAKLAMA BOTTOM SHEET -->
+    <div id="stop-details-sheet" class="bottom-sheet glass-panel">
+        <div class="sheet-handle"></div>
+        <div class="sheet-content">
+            <div class="sheet-header">
+                <h3 id="sheet-title">Duraklama Detayı</h3>
+                <button class="close-sheet" onclick="closeStopDetails()">
+                    <ion-icon name="close"></ion-icon>
+                </button>
+            </div>
+            <div class="sheet-body">
+                <div class="detail-row">
+                    <ion-icon name="time-outline"></ion-icon>
+                    <div>
+                        <span class="label">Süre</span>
+                        <span id="sheet-duration" class="value">-</span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <ion-icon name="play-outline"></ion-icon>
+                    <div>
+                        <span class="label">Başlangıç</span>
+                        <span id="sheet-start" class="value">-</span>
+                    </div>
+                </div>
+                <div class="detail-row">
+                    <ion-icon name="stop-outline"></ion-icon>
+                    <div>
+                        <span class="label">Bitiş</span>
+                        <span id="sheet-end" class="value">-</span>
+                    </div>
+                </div>
+                <button id="sheet-zoom-btn" class="btn-primary">
+                    <ion-icon name="locate"></ion-icon>
+                    Noktaya Odaklan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobil Sidebar -->
+    <div id="mobile-sidebar" class="sidebar-hidden glass-panel">
+        <div class="sidebar-header">
+            <h2>Analiz Paneli</h2>
+            <button id="sidebar-close" class="icon-btn" aria-label="Menüyü kapat">
+                <ion-icon name="close" aria-hidden="true"></ion-icon>
+            </button>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="quick-date-selector">
+                <button class="date-btn active" data-days="0">Bugün</button>
+                <button class="date-btn" data-days="1">Dün</button>
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="startTime">Başlangıç</label>
+                        <input type="time" id="startTime" class="filter-input" value="00:00">
+                    </div>
+                    <div class="filter-group">
+                        <label for="endTime">Bitiş</label>
+                        <input type="time" id="endTime" class="filter-input" value="23:59">
+                    </div>
+                </div>
+                <button id="apply-filters" class="btn-primary">
+                    <ion-icon name="filter"></ion-icon>
+                    Filtrele
+                </button>
+            </div>
+
+            <div class="summary-cards">
+                <div class="stat-card">
+                    <div class="stat-icon"><ion-icon name="speedometer"></ion-icon></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="total-distance">-</div>
+                        <div class="stat-label">Mesafe</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon"><ion-icon name="flash"></ion-icon></div>
+                    <div class="stat-info">
+                        <div class="stat-value" id="max-speed">-</div>
+                        <div class="stat-label">Maks. Hız</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-navigation" role="tablist">
+                <button class="tab-btn active" data-tab="stops" role="tab" aria-selected="true">
+                    <ion-icon name="location" aria-hidden="true"></ion-icon>
+                    Duraklar
+                </button>
+                <button class="tab-btn" data-tab="analysis" role="tab" aria-selected="false">
+                    <ion-icon name="analytics" aria-hidden="true"></ion-icon>
+                    Analiz
+                </button>
+            </div>
+
+            <div class="tab-content">
+                <!-- Duraklar Tab -->
+                <div id="stops-tab" class="tab-pane active" role="tabpanel">
+                    <div class="stops-list" id="stops-list">
+                        <!-- Duraklar buraya eklenecek -->
+                    </div>
+                </div>
+
+                <!-- Analiz Tab -->
+                <div id="analysis-tab" class="tab-pane" role="tabpanel">
+                    <div class="analysis-section">
+                        <h4>Hız Limiti Analizi</h4>
+                        <div class="speed-limit-control">
+                            <label for="speedLimitSlider">Hız Limiti (km/s):</label>
+                            <input type="range" id="speedLimitSlider" min="30" max="120" value="60" step="5">
+                            <span id="speedLimitValue">60 km/s</span>
+                        </div>
+                        <div class="limit-stats">
+                            <div class="limit-stat">
+                                <span class="stat-badge danger" id="exceed-count">0</span>
+                                <span>Limit Aşım Noktası</span>
+                            </div>
+                        </div>
+                        <div class="analysis-tip">
+                            <ion-icon name="information-circle-outline"></ion-icon>
+                            <p>GPS titremeleri otomatik olarak filtrelenmiştir.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <p>Veriler işleniyor...</p>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script src="main.js"></script>
+    <script>
+        firebase.auth().onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'login.html';
+            } else {
+                // Auth onaylandı, içeriği göster ve uygulamayı başlat
+                document.body.style.opacity = '1';
+                document.body.style.pointerEvents = 'auto';
+                if (typeof initializeApp === 'function') {
+                    initializeApp();
+                } else {
+                    console.error('initializeApp bulunamadı!');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

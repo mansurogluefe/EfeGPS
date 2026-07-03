@@ -1,0 +1,808 @@
+/* Auth Protection */
+body.auth-hidden {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease-in-out;
+}
+
+body.auth-verified {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+:root {
+    --primary: #007aff;
+    --primary-dark: #0056b3;
+    --bg-glass: rgba(255, 255, 255, 0.82);
+    --text-main: #1c1c1e;
+    --text-sub: #8e8e93;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    --radius: 18px;
+
+    /* Eski değişkenler (uyumluluk için) */
+    --primary-color: var(--primary);
+    --border-color: rgba(0, 0, 0, 0.05);
+    --panel-bg: var(--bg-glass);
+    --text-color: var(--text-main);
+    --bg-color: #f2f2f7;
+    --secondary-bg: #ffffff;
+    --card-shadow: var(--shadow);
+}
+
+
+.back-btn-nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 122, 255, 0.1);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--primary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.back-btn-nav:active {
+    transform: scale(0.94);
+    background: rgba(0, 122, 255, 0.15);
+}
+
+.back-btn-nav ion-icon {
+    font-size: 20px;
+}
+
+/* Telegram WebView Optimizasyonları */
+* {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    box-sizing: border-box;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg-color);
+    color: var(--text-color);
+    touch-action: manipulation;
+}
+
+.glass-panel {
+    background: var(--bg-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 0.5px solid rgba(0, 0, 0, 0.05);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+}
+
+/* Mobil Header */
+#mobile-header {
+    position: fixed;
+    top: calc(15px + env(safe-area-inset-top));
+    left: 15px;
+    right: 15px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 18px;
+    z-index: 1000;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-left h1 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.icon-btn {
+    width: 42px;
+    height: 42px;
+    border: none;
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 21px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    color: var(--text-main);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:active {
+    background: rgba(0, 0, 0, 0.08);
+    transform: scale(0.92);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--text-main);
+}
+
+.brand img {
+    height: 34px;
+    width: auto;
+    border-radius: 6px;
+}
+
+/* Harita */
+#map {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    z-index: 1;
+}
+
+/* Bottom Sheet - GİZLENDİ */
+#bottom-sheet {
+    display: none;
+}
+
+.sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: var(--border-color);
+    border-radius: 2px;
+    margin: 8px auto;
+}
+
+.sheet-content {
+    height: calc(100% - 20px);
+    padding: 0 15px;
+}
+
+#analyticsChart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* Mobil Sidebar */
+#mobile-sidebar {
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 85%;
+    max-width: 400px;
+    height: 100%;
+    background: var(--panel-bg);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    z-index: 1003;
+    transition: left 0.3s ease;
+    overflow-y: auto;
+    box-shadow: 2px 0 20px rgba(0, 0, 0, 0.2);
+}
+
+#mobile-sidebar.sidebar-visible {
+    left: 0;
+}
+
+.sidebar-header {
+    padding: 20px 15px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.sidebar-header h2 {
+    margin: 0;
+    font-size: 20px;
+    color: var(--primary-color);
+}
+
+.sidebar-content {
+    padding: 15px;
+    height: calc(100% - 80px);
+    overflow-y: auto;
+}
+
+/* Hızlı Tarih Seçici */
+.quick-date-selector {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.date-btn {
+    flex: 1;
+    padding: 10px 8px;
+    border: 1px solid var(--border-color);
+    background: var(--secondary-bg);
+    color: var(--text-color);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.date-btn.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+/* Filtre Bölümü */
+.filter-section {
+    background: var(--secondary-bg);
+    padding: 15px;
+    border-radius: 15px;
+    margin-bottom: 20px;
+    box-shadow: var(--card-shadow);
+}
+
+.filter-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.filter-group {
+    flex: 1;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.filter-input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: var(--bg-color);
+    color: var(--text-color);
+    font-size: 14px;
+}
+
+.btn-primary {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-primary:active {
+    background: var(--primary-dark);
+    transform: scale(0.98);
+}
+
+/* İstatistik Kartları */
+.summary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.5);
+    padding: 15px;
+    border-radius: 16px;
+    box-shadow: none;
+    border: 1px solid rgba(0, 0, 0, 0.03);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.stat-icon {
+    width: 38px;
+    height: 38px;
+    background: rgba(0, 122, 255, 0.1);
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.stat-value {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.stat-label {
+    font-size: 12px;
+    color: var(--text-color);
+    opacity: 0.7;
+}
+
+/* Tab Navigasyon */
+.tab-navigation {
+    display: flex;
+    background: var(--secondary-bg);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 15px;
+    box-shadow: var(--card-shadow);
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px 8px;
+    border: none;
+    background: transparent;
+    color: var(--text-color);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* Duraklar Listesi */
+.stops-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.stop-item {
+    padding: 15px;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.stop-item:active {
+    background: var(--primary-light);
+    color: white;
+}
+
+/* Yükleme Overlay */
+#loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--panel-bg);
+    z-index: 2000;
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--border-color);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Toast Mesajları */
+#toast-container {
+    position: fixed;
+    top: 70px;
+    right: 15px;
+    z-index: 2001;
+    max-width: 300px;
+}
+
+.toast {
+    background: var(--secondary-bg);
+    color: var(--text-color);
+    padding: 12px 16px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: var(--card-shadow);
+    border-left: 4px solid var(--primary-color);
+    animation: slideInRight 0.3s ease;
+}
+
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Scrollbar Styling */
+.sidebar-content::-webkit-scrollbar {
+    width: 4px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+    background: var(--primary-color);
+    border-radius: 2px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 480px) {
+    .filter-row {
+        flex-direction: column;
+    }
+
+    .summary-cards {
+        grid-template-columns: 1fr;
+    }
+
+    #mobile-sidebar {
+        width: 90%;
+    }
+}
+
+/* Landscape Mode için Optimizasyon */
+@media (max-height: 500px) and (orientation: landscape) {
+    #map {
+        bottom: 150px;
+        height: calc(100vh - 210px);
+    }
+
+    #bottom-sheet {
+        height: 150px;
+    }
+
+    .summary-cards {
+        grid-template-columns: repeat(4, 1fr);
+    }
+}
+
+/* Hata mesajları için stiller */
+.error-message {
+    color: var(--danger-color);
+    text-align: center;
+    padding: 20px;
+}
+
+.warning-message {
+    color: var(--warning-color);
+    text-align: center;
+    padding: 20px;
+}
+
+/* Stat badge stilleri */
+.stat-badge {
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.stat-badge.danger {
+    background: var(--danger-color);
+    color: white;
+}
+
+.stat-badge.warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+/* Analysis section */
+.analysis-section {
+    padding: 15px 0;
+}
+
+.speed-limit-control {
+    margin-bottom: 15px;
+}
+
+.limit-stats {
+    display: flex;
+    gap: 15px;
+}
+
+.limit-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Export options */
+.export-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.export-btn {
+    padding: 12px;
+    background: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-color);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.export-btn:active {
+    background: var(--primary-light);
+    color: white;
+}
+
+/* --- ROTA ANALİZ V2 EKLEMLERİ (iOS TARZI) --- */
+
+/* Modern Duraklama İkonu */
+.ios-marker-container {
+    position: relative;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ios-marker-inner {
+    width: 32px;
+    height: 32px;
+    background: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    font-size: 20px;
+    z-index: 2;
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.ios-stop-marker {
+    background: none !important;
+    border: none !important;
+}
+
+.ios-marker-pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: var(--primary);
+    border-radius: 50%;
+    opacity: 0.2;
+    animation: marker-pulse 2s infinite;
+    z-index: 1;
+}
+
+@keyframes marker-pulse {
+    0% {
+        transform: scale(0.6);
+        opacity: 0.5;
+    }
+
+    100% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+}
+
+/* Bottom Sheet (Aşağıdan açılan panel) */
+.bottom-sheet {
+    position: fixed;
+    bottom: -100%;
+    left: 15px;
+    right: 15px;
+    max-width: 500px;
+    margin: 0 auto;
+    z-index: 2000;
+    transition: bottom 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    padding: 15px 20px 25px;
+}
+
+.bottom-sheet.visible {
+    bottom: 20px;
+}
+
+.sheet-handle {
+    width: 40px;
+    height: 4px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 2px;
+    margin: 0 auto 15px;
+}
+
+.sheet-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.sheet-header h3 {
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.close-sheet {
+    background: rgba(0, 0, 0, 0.05);
+    border: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+}
+
+.detail-row {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 12px;
+    background: rgba(0, 0, 0, 0.03);
+    padding: 14px;
+    border-radius: 16px;
+}
+
+.detail-row ion-icon {
+    font-size: 26px;
+    color: var(--primary);
+}
+
+.detail-row .label {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-sub);
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.detail-row .value {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+/* V2 Liste Öğeleri */
+.stop-item.v2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: rgba(0, 122, 255, 0.04);
+    border-radius: 15px;
+    border-left: 4px solid var(--primary);
+}
+
+.stop-icon-v2 {
+    width: 40px;
+    height: 40px;
+    background: white;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 22px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+/* V2 Analiz Bölümü */
+.analysis-section.v2 {
+    padding: 10px 5px;
+}
+
+.analysis-section.v2 h4 {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: var(--text-main);
+}
+
+.analysis-tip {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-top: 25px;
+    padding: 15px;
+    background: rgba(0, 122, 255, 0.05);
+    border-radius: 12px;
+    border: 1px dashed var(--primary);
+}
+
+.analysis-tip ion-icon {
+    font-size: 20px;
+    color: var(--primary);
+    margin-top: 2px;
+}
+
+.analysis-tip p {
+    font-size: 0.85rem;
+    color: var(--text-main);
+    line-height: 1.4;
+    margin: 0;
+}
+
+.speed-limit-control label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    display: block;
+}
+
+#speedLimitValue {
+    display: inline-block;
+    margin-top: 10px;
+    font-weight: 700;
+    color: var(--primary);
+    background: white;
+    padding: 2px 8px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
